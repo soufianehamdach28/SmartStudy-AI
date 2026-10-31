@@ -19,7 +19,8 @@
     "build": "npm run build --workspaces --if-present",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs -f",
+    "prisma:migrate": "npm --workspace=@smartstudy/api run prisma:migrate",
+    "prisma:generate": "npm --workspace=@smartstudy/api run prisma:generate",
     "prepare": "husky || true"
   },
   "devDependencies": {

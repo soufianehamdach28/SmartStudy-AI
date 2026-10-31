@@ -1,9 +1,9 @@
 name: CI
 
+# Temporarily disabled automatic push/pr triggers while GitHub billing is sorted out.
+# Re-enable push and pull_request triggers once billing is active.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

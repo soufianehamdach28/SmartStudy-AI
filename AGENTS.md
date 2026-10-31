@@ -427,7 +427,7 @@ Mobile reads only a public config (for example `API_BASE_URL`). **No secret ever
 - [x] `.env.example`, first README
 
 ### Step 1 — Accounts
-- [ ] Prisma `User` + `RefreshToken`, migration
+- [x] Prisma `User` + `RefreshToken`, migration
 - [ ] `register`, `login`, `refresh`, `logout`, `/me`
 - [ ] Global error filter + validation pipe
 - [ ] Mobile: login/register screens, secure token storage, axios refresh interceptor, auth navigation
@@ -472,10 +472,13 @@ Mobile reads only a public config (for example `API_BASE_URL`). **No secret ever
 
 > The agent updates this section after each step.
 
-- **Current step:** Step 1 — not started
-- **Done:** Step 0 foundations: npm workspaces monorepo (`apps/api`, `apps/mobile`, `packages/shared`); Docker Compose with Postgres 17 + pgvector, Redis (host port 6380) and SeaweedFS; NestJS 12 app with Zod env validation, Prisma 7 wiring (schema only, no models yet) and Terminus health endpoints; React Native 0.88 app with monorepo-aware Metro and Gradle config, built as a debug APK and verified running on a physical Xiaomi Mi 9T (`arm64-v8a`, API 30); shared Zod package consumed by both apps; Prettier, Husky + lint-staged, GitHub Actions CI, `.env.example` and README.
-- **Next action:** propose the Step 1 plan (Prisma `User` + `RefreshToken`, auth endpoints, global error filter + validation pipe, mobile auth screens) and wait for validation.
-- **Open questions:** operating system of the builder for iOS builds (needs macOS); which LLM provider accounts are already created; whether to keep Nest 12's Vitest default or switch the API to Jest as originally planned.
+- **Current step:** Step 1 — Accounts (in progress)
+- **Done:**
+  - Step 0 foundations: npm workspaces monorepo (`apps/api`, `apps/mobile`, `packages/shared`); Docker Compose with Postgres 17 + pgvector, Redis (host port 6380) and SeaweedFS; NestJS 12 app with Zod env validation, Prisma 7 wiring and Terminus health endpoints; React Native 0.88 app; shared Zod package; Prettier, Husky + lint-staged, GitHub Actions CI, `.env.example` and README.
+  - Step 1 / Commit 01: `feat(shared): add auth contracts, zod schemas and error codes`.
+  - Step 1 / Commit 02: `feat(api): define User and RefreshToken models in Prisma schema` with initial PostgreSQL migration.
+- **Next action:** Commit 03: `feat(api): add password hashing service with argon2`.
+- **Open questions:** operating system of the builder for iOS builds (needs macOS); which LLM provider accounts are already created.
 
 ---
 
