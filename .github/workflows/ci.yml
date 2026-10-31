@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared:
+    name: Shared package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w @smartstudy/shared
+      - run: npm run build -w @smartstudy/shared
+
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    env:
+      # Only needed by the Prisma config so `prisma generate` can run in CI.
+      DATABASE_URL: postgresql://smartstudy:smartstudy@localhost:5432/smartstudy
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @smartstudy/shared
+      - run: npm run prisma:generate -w @smartstudy/api
+      - run: npm run lint -w @smartstudy/api
+      - run: npm run typecheck -w @smartstudy/api
+      - run: npm test -w @smartstudy/api
+      - run: npm run build -w @smartstudy/api
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @smartstudy/shared
+      - run: npm run lint -w @smartstudy/mobile
+      - run: npm run typecheck -w @smartstudy/mobile
+      - run: npm test -w @smartstudy/mobile -- --ci

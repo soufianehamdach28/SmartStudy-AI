@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "smartstudy",
+      "credentials": [
+        {
+          "accessKey": "smartstudy",
+          "secretKey": "smartstudy-dev"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

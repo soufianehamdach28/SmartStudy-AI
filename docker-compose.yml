@@ -1,0 +1,65 @@
+name: smartstudy
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: smartstudy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: smartstudy
+      POSTGRES_PASSWORD: smartstudy
+      POSTGRES_DB: smartstudy
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U smartstudy -d smartstudy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartstudy-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      # 6379 is often occupied by a host Redis; 6380 avoids the clash.
+      - '6380:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # S3-compatible object storage. MinIO's official images were removed from public
+  # registries, so we use SeaweedFS, which speaks the same S3 API and works with
+  # @aws-sdk/client-s3 (and Cloudflare R2 in production).
+  storage:
+    image: chrislusf/seaweedfs:latest
+    container_name: smartstudy-storage
+    restart: unless-stopped
+    command: >
+      server -dir=/data
+      -s3 -s3.port=8333 -s3.autoCreateBucket
+      -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      - '8333:8333' # S3 API
+      - '9333:9333' # master
+      - '8888:8888' # filer UI
+    volumes:
+      - storage-data:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:9333/cluster/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:
