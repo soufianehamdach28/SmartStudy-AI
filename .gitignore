@@ -49,3 +49,7 @@ yarn-error.log*
 
 # Ruby bundler (iOS)
 .bundle/
+
+# AI instructions & planning
+AGENTS.md
+PROJECT_PLAN.md
