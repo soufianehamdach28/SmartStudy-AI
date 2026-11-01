@@ -35,9 +35,15 @@ export const envSchema = z.object({
     .default(10 * 1024 * 1024),
   MAX_PAGES: z.coerce.number().int().positive().default(300),
 
-  // Auth (validated more strictly once the auth module lands in Step 1).
-  JWT_ACCESS_SECRET: z.string().optional(),
-  JWT_REFRESH_SECRET: z.string().optional(),
+  // Auth secrets — required in every environment. Must be at least 32 random
+  // characters. Generate one with:
+  //   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
 

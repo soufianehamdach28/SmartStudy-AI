@@ -30,6 +30,9 @@ jobs:
       # Only needed by the Prisma config so `prisma generate` can run in CI.
       DATABASE_URL: postgresql://smartstudy:smartstudy@localhost:5432/smartstudy
       REDIS_URL: redis://localhost:6379
+      # Non-production test secrets — long enough to pass validation (≥ 32 chars).
+      JWT_ACCESS_SECRET: ci-test-access-secret-at-least-32-characters-long
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-at-least-32-characters-long
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
