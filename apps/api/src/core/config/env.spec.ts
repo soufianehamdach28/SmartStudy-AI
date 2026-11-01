@@ -33,7 +33,10 @@ describe('parseEnv', () => {
       /DATABASE_URL/,
     );
     expect(() =>
-      parseEnv({ DATABASE_URL: validEnv.DATABASE_URL, REDIS_URL: validEnv.REDIS_URL }),
+      parseEnv({
+        DATABASE_URL: validEnv.DATABASE_URL,
+        REDIS_URL: validEnv.REDIS_URL,
+      }),
     ).toThrow(/JWT_ACCESS_SECRET/);
   });
 

@@ -21,6 +21,15 @@ export interface IssuedTokens {
   expiresIn: number;
 }
 
+export interface RotatedTokens extends IssuedTokens {
+  user: {
+    id: string;
+    email: string;
+    role: UserRole;
+    createdAt: Date;
+  };
+}
+
 @Injectable()
 export class TokenService {
   constructor(
@@ -158,13 +167,15 @@ export class TokenService {
    *
    * @throws UnauthorizedException on any invalid condition.
    */
-  async rotateRefreshToken(rawRefreshToken: string): Promise<IssuedTokens> {
+  async rotateRefreshToken(rawRefreshToken: string): Promise<RotatedTokens> {
     const tokenHash = this.hashToken(rawRefreshToken);
 
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
       include: {
-        user: { select: { id: true, email: true, role: true } },
+        user: {
+          select: { id: true, email: true, role: true, createdAt: true },
+        },
       },
     });
 
@@ -220,6 +231,12 @@ export class TokenService {
       refreshToken: rawNew,
       tokenType: 'Bearer',
       expiresIn: 15 * 60,
+      user: {
+        id: stored.user.id,
+        email: stored.user.email,
+        role: stored.user.role as UserRole,
+        createdAt: stored.user.createdAt,
+      },
     };
   }
 

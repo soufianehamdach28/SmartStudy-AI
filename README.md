@@ -78,4 +78,3 @@ into the mobile app; the app only reads a public `API_BASE_URL` and talks exclus
 ## License
 
 Private portfolio project. All rights reserved.
-git add . && git commit -m "feat(api): implement JWT token service and refresh token rotation"

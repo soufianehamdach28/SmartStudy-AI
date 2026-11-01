@@ -8,22 +8,29 @@ import type { TokenPayload } from './token.service.js';
 // ---------------------------------------------------------------------------
 
 /** A fake RefreshToken DB row. */
-const makeTokenRow = (overrides: Partial<{
-  id: string;
-  userId: string;
-  tokenHash: string;
-  expiresAt: Date;
-  revokedAt: Date | null;
-  replacedById: string | null;
-  user: { id: string; email: string; role: string };
-}> = {}) => ({
+const makeTokenRow = (
+  overrides: Partial<{
+    id: string;
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+    revokedAt: Date | null;
+    replacedById: string | null;
+    user: { id: string; email: string; role: string; createdAt: Date };
+  }> = {},
+) => ({
   id: 'token-id-1',
   userId: 'user-id-1',
   tokenHash: 'some-hash',
   expiresAt: new Date(Date.now() + 30 * 24 * 3600_000), // 30 days from now
   revokedAt: null,
   replacedById: null,
-  user: { id: 'user-id-1', email: 'alice@example.com', role: 'STUDENT' },
+  user: {
+    id: 'user-id-1',
+    email: 'alice@example.com',
+    role: 'STUDENT',
+    createdAt: new Date(),
+  },
   ...overrides,
 });
 
@@ -94,7 +101,8 @@ describe('TokenService', () => {
       mockPrisma.refreshToken.create.mockResolvedValueOnce({});
 
       const result = await service.generateTokens(payload);
-      const { tokenHash } = mockPrisma.refreshToken.create.mock.calls[0][0].data as { tokenHash: string };
+      const { tokenHash } = mockPrisma.refreshToken.create.mock.calls[0][0]
+        .data as { tokenHash: string };
 
       // The stored hash is a 64-char hex SHA-256 digest.
       expect(tokenHash).toMatch(/^[0-9a-f]{64}$/);
@@ -157,8 +165,8 @@ describe('TokenService', () => {
       // First call: initial lookup by tokenHash (finds the revoked token)
       // Subsequent calls: revokeFamily traversal by ID
       mockPrisma.refreshToken.findUnique
-        .mockResolvedValueOnce(revokedRow)       // initial lookup
-        .mockResolvedValueOnce(revokedRow)       // revokeFamily: start node (already revoked, skip update)
+        .mockResolvedValueOnce(revokedRow) // initial lookup
+        .mockResolvedValueOnce(revokedRow) // revokeFamily: start node (already revoked, skip update)
         .mockResolvedValueOnce(activeReplacement); // revokeFamily: replacement (active → revoke it)
 
       mockPrisma.refreshToken.update.mockResolvedValue({});
@@ -211,7 +219,9 @@ describe('TokenService', () => {
     it('is a no-op (does not throw) when token is not found', async () => {
       mockPrisma.refreshToken.updateMany.mockResolvedValueOnce({ count: 0 });
 
-      await expect(service.revokeRefreshToken('unknown-token')).resolves.toBeUndefined();
+      await expect(
+        service.revokeRefreshToken('unknown-token'),
+      ).resolves.toBeUndefined();
     });
   });
 });
