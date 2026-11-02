@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
+import { GlobalExceptionFilter } from './core/common/filters/global-exception.filter.js';
 import { parseEnv } from './core/config/env.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -19,5 +21,12 @@ import { AuthModule } from './modules/auth/auth.module.js';
     HealthModule,
     AuthModule,
   ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+  ],
 })
 export class AppModule {}
+

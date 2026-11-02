@@ -1,5 +1,6 @@
 import { RequestMethod, type INestApplication } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
+import { apiErrorSchema } from '@smartstudy/shared';
 import request from 'supertest';
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
 import { AppModule } from '../src/app.module.js';
@@ -68,30 +69,40 @@ describe('Auth (e2e)', () => {
     });
 
     it('rejects duplicate email with 409 Conflict', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/register')
         .send(testUser)
         .expect(409);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('rejects passwords shorter than 8 characters with 400 Bad Request', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/register')
         .send({
           email: 'shortpass@example.com',
           password: 'short',
         })
         .expect(400);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('VALIDATION_ERROR');
+      expect(parsed.error.details).toHaveProperty('issues');
     });
 
     it('rejects invalid email formats with 400 Bad Request', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/register')
         .send({
           email: 'not-an-email',
           password: 'Password123!',
         })
         .expect(400);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -111,23 +122,29 @@ describe('Auth (e2e)', () => {
     });
 
     it('rejects incorrect password with 401 Unauthorized', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({
           email: testUser.email,
           password: 'WrongPassword999!',
         })
         .expect(401);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('UNAUTHORIZED');
     });
 
     it('rejects unknown email with 401 Unauthorized', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({
           email: 'nonexistent-user@example.com',
           password: 'Password123!',
         })
         .expect(401);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('UNAUTHORIZED');
     });
   });
 
@@ -149,10 +166,13 @@ describe('Auth (e2e)', () => {
 
     it('rejects an already-used refresh token with 401 (reuse detection)', async () => {
       // Re-using the old already-rotated refresh token
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/refresh')
         .send({ refreshToken: 'invalid-or-fake-token' })
         .expect(401);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('UNAUTHORIZED');
     });
   });
 
@@ -164,10 +184,13 @@ describe('Auth (e2e)', () => {
         .expect(204);
 
       // Attempting to refresh with the revoked token should now fail
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/api/auth/refresh')
         .send({ refreshToken })
         .expect(401);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('UNAUTHORIZED');
     });
   });
 
@@ -186,14 +209,19 @@ describe('Auth (e2e)', () => {
     });
 
     it('returns 401 with no Authorization header', async () => {
-      await request(app.getHttpServer()).get('/api/me').expect(401);
+      const res = await request(app.getHttpServer()).get('/api/me').expect(401);
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('UNAUTHORIZED');
     });
 
     it('returns 401 with a malformed token', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .get('/api/me')
         .set('Authorization', 'Bearer not.a.valid.token')
         .expect(401);
+
+      const parsed = apiErrorSchema.parse(res.body);
+      expect(parsed.error.code).toBe('UNAUTHORIZED');
     });
   });
 });
