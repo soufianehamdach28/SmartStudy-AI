@@ -15,6 +15,7 @@ describe('Auth (e2e)', () => {
   };
 
   let refreshToken: string;
+  let accessToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -63,6 +64,7 @@ describe('Auth (e2e)', () => {
       expect(res.body.user).not.toHaveProperty('passwordHash');
 
       refreshToken = res.body.tokens.refreshToken;
+      accessToken = res.body.tokens.accessToken;
     });
 
     it('rejects duplicate email with 409 Conflict', async () => {
@@ -165,6 +167,32 @@ describe('Auth (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/auth/refresh')
         .send({ refreshToken })
+        .expect(401);
+    });
+  });
+
+  describe('GET /api/me', () => {
+    it('returns 200 with user profile for a valid access token', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('id');
+      expect(res.body.email).toBe(testUser.email.toLowerCase());
+      expect(res.body.role).toBe('STUDENT');
+      expect(res.body).toHaveProperty('createdAt');
+      expect(res.body).not.toHaveProperty('passwordHash');
+    });
+
+    it('returns 401 with no Authorization header', async () => {
+      await request(app.getHttpServer()).get('/api/me').expect(401);
+    });
+
+    it('returns 401 with a malformed token', async () => {
+      await request(app.getHttpServer())
+        .get('/api/me')
+        .set('Authorization', 'Bearer not.a.valid.token')
         .expect(401);
     });
   });

@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import type {
@@ -8,6 +9,7 @@ import type {
   LoginRequest,
   RefreshTokenRequest,
   RegisterRequest,
+  UserProfile,
   UserRole,
 } from '@smartstudy/shared';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
@@ -144,5 +146,27 @@ export class AuthService {
    */
   async logout(dto: RefreshTokenRequest): Promise<void> {
     await this.tokenService.revokeRefreshToken(dto.refreshToken);
+  }
+
+  /**
+   * Return the public profile for the currently authenticated user.
+   * @throws NotFoundException if the user was deleted after the token was issued.
+   */
+  async getMe(userId: string): Promise<UserProfile> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, createdAt: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User account not found.');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role as UserRole,
+      createdAt: user.createdAt.toISOString(),
+    };
   }
 }

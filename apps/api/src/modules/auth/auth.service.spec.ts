@@ -205,4 +205,37 @@ describe('AuthService', () => {
       );
     });
   });
+
+  describe('getMe', () => {
+    it('returns UserProfile for a valid userId', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: 'user-uuid-1',
+        email: 'alice@example.com',
+        role: 'STUDENT',
+        createdAt: fakeDate,
+      });
+
+      const result = await service.getMe('user-uuid-1');
+
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1' },
+        select: { id: true, email: true, role: true, createdAt: true },
+      });
+      expect(result).toEqual({
+        id: 'user-uuid-1',
+        email: 'alice@example.com',
+        role: 'STUDENT',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('throws NotFoundException if user does not exist', async () => {
+      const { NotFoundException } = await import('@nestjs/common');
+      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+      await expect(service.getMe('nonexistent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
 });
