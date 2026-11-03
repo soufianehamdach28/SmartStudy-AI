@@ -15,6 +15,7 @@
     "@smartstudy/shared": "*",
     "react": "19.3.0",
     "react-native": "0.88.1",
+    "react-native-keychain": "^10.0.0",
     "react-native-safe-area-context": "^5.5.2",
     "zod": "^4.6.7"
   },
