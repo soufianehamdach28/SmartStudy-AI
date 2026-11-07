@@ -59,3 +59,14 @@ jest.mock('react-native-keychain', () => {
     },
   };
 });
+
+jest.mock('react-native-safe-area-context', () => {
+  const mock = require('react-native-safe-area-context/jest/mock');
+  return mock.default || mock;
+});
+
+// Disable looped animations in tests
+const { AccessibilityInfo } = require('react-native');
+if (AccessibilityInfo) {
+  AccessibilityInfo.isReduceMotionEnabled = jest.fn(() => Promise.resolve(true));
+}

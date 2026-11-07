@@ -59,7 +59,7 @@ export async function getTokens(): Promise<AuthTokens | null> {
     }
 
     return null;
-  } catch (error) {
+  } catch {
     // If decryption or JSON parsing fails, treat as missing tokens
     return null;
   }
@@ -89,7 +89,7 @@ export async function clearTokens(): Promise<void> {
     await Keychain.resetGenericPassword({
       service: AUTH_KEYCHAIN_SERVICE,
     });
-  } catch (error) {
+  } catch {
     // Suppress error if already cleared or reset fails
   }
 }

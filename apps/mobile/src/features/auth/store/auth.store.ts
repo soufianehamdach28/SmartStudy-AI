@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Fetch user profile; if accessToken is expired, apiClient interceptor will rotate it
       const response = await apiClient.get<UserProfile>('/me');
       set({ user: response.data, status: 'authenticated', error: null });
-    } catch (err) {
+    } catch {
       // If fetching /me or token rotation fails, purge tokens and set unauthenticated
       await clearTokens();
       set({ user: null, status: 'unauthenticated' });

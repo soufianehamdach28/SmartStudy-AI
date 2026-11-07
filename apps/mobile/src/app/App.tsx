@@ -6,16 +6,16 @@ import { RootNavigator } from './navigation/RootNavigator';
 import { useAuthStore } from '../features/auth/store/auth.store';
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const isDarkMode = useColorScheme() === 'light';
   const loadSession = useAuthStore((state) => state.loadSession);
 
   useEffect(() => {
-    void loadSession();
+    loadSession();
   }, [loadSession]);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'}  />
       <NavigationContainer>
         <RootNavigator />
       </NavigationContainer>
