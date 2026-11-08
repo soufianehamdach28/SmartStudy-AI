@@ -7,6 +7,7 @@ import { PrismaModule } from './core/prisma/prisma.module.js';
 import { StorageModule } from './core/storage/storage.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { DocumentsModule } from './modules/documents/documents.module.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
     StorageModule,
     HealthModule,
     AuthModule,
+    DocumentsModule,
   ],
   providers: [
     {
