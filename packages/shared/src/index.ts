@@ -42,10 +42,82 @@ export const apiErrorSchema = z.object({
 
 export type ApiError = z.infer<typeof apiErrorSchema>;
 
-/** Lifecycle of an uploaded document as it goes through ingestion. */
-export const documentStatusSchema = z.enum(['UPLOADED', 'PROCESSING', 'READY', 'FAILED']);
+/** Maximum upload size for a course document (10 MB). */
+export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
 
+/** Maximum pages allowed in a single PDF document. */
+export const MAX_DOCUMENT_PAGES = 300;
+
+/** Allowed MIME types for uploaded documents. */
+export const ALLOWED_DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'text/plain',
+] as const;
+
+export const documentMimeTypeSchema = z.enum(ALLOWED_DOCUMENT_MIME_TYPES);
+export type DocumentMimeType = z.infer<typeof documentMimeTypeSchema>;
+
+/** Allowed file extensions. */
+export const ALLOWED_DOCUMENT_EXTENSIONS = ['.pdf', '.txt'] as const;
+export const documentExtensionSchema = z.enum(ALLOWED_DOCUMENT_EXTENSIONS);
+export type DocumentExtension = z.infer<typeof documentExtensionSchema>;
+
+/** Lifecycle of an uploaded document as it goes through ingestion. */
+export const DOCUMENT_STATUSES = ['UPLOADED', 'PROCESSING', 'READY', 'FAILED'] as const;
+export const documentStatusSchema = z.enum(DOCUMENT_STATUSES);
 export type DocumentStatus = z.infer<typeof documentStatusSchema>;
+
+/** Document representation returned over the wire. */
+export const documentResponseSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid().optional(),
+  title: z.string().min(1),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
+  status: documentStatusSchema,
+  errorMessage: z.string().nullable().optional(),
+  pageCount: z.number().int().nonnegative().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime().optional(),
+});
+export type DocumentResponse = z.infer<typeof documentResponseSchema>;
+
+/** Response returned by POST /api/documents (HTTP 202 Accepted). */
+export const documentUploadResponseSchema = z.object({
+  document: documentResponseSchema,
+  message: z.string().optional(),
+});
+export type DocumentUploadResponse = z.infer<typeof documentUploadResponseSchema>;
+
+/** Query parameters for GET /api/documents. */
+export const documentListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+export type DocumentListQuery = z.infer<typeof documentListQuerySchema>;
+
+/** Paginated documents response shape. */
+export const paginatedDocumentsResponseSchema = z.object({
+  items: z.array(documentResponseSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive(),
+  totalPages: z.number().int().nonnegative(),
+});
+export type PaginatedDocumentsResponse = z.infer<typeof paginatedDocumentsResponseSchema>;
+
+/** Document chunk representation for ingestion and retrieval. */
+export const documentChunkSchema = z.object({
+  id: z.string().uuid(),
+  documentId: z.string().uuid(),
+  index: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  text: z.string().min(1),
+  charStart: z.number().int().nonnegative(),
+  charEnd: z.number().int().positive(),
+});
+export type DocumentChunk = z.infer<typeof documentChunkSchema>;
 
 /** Health payload exposed by `GET /health`. */
 export const healthResponseSchema = z.object({
