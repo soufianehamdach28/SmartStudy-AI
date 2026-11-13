@@ -65,6 +65,28 @@ jest.mock('react-native-safe-area-context', () => {
   return mock.default || mock;
 });
 
+// Mock @react-native-documents/picker
+jest.mock('@react-native-documents/picker', () => {
+  return {
+    pick: jest.fn(),
+    types: {
+      allFiles: '*/*',
+      pdf: 'application/pdf',
+      plainText: 'text/plain',
+      images: 'image/*',
+    },
+    errorCodes: {
+      OPERATION_CANCELED: 'OPERATION_CANCELED',
+      IN_PROGRESS: 'ASYNC_OP_IN_PROGRESS',
+      UNABLE_TO_OPEN_FILE_TYPE: 'UNABLE_TO_OPEN_FILE_TYPE',
+    },
+    isErrorWithCode: (err) => Boolean(err && typeof err === 'object' && 'code' in err),
+    keepLocalCopy: jest.fn(),
+    isKnownType: jest.fn(),
+    releaseSecureAccess: jest.fn(),
+  };
+});
+
 // Disable looped animations in tests
 const { AccessibilityInfo } = require('react-native');
 if (AccessibilityInfo) {
