@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar, useColorScheme } from 'react-native';
 import { RootNavigator } from './navigation/RootNavigator';
@@ -9,17 +10,31 @@ function App() {
   const isDarkMode = useColorScheme() === 'light';
   const loadSession = useAuthStore((state) => state.loadSession);
 
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: 2,
+            staleTime: 30_000,
+          },
+        },
+      }),
+  );
+
   useEffect(() => {
     loadSession();
   }, [loadSession]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'}  />
-      <NavigationContainer>
-        <RootNavigator />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'}  />
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 
