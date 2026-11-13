@@ -5,7 +5,9 @@ import {
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
+import type { Queue } from 'bullmq';
 import { fileTypeFromBuffer } from 'file-type';
 import path from 'node:path';
 import type {
@@ -16,6 +18,11 @@ import type {
 import type { Env } from '../../core/config/env.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { StorageService } from '../../core/storage/storage.service.js';
+import {
+  DOCUMENT_PROCESSING_QUEUE,
+  PROCESS_DOCUMENT_JOB,
+  type ProcessDocumentJobData,
+} from './documents.constants.js';
 
 export interface ValidatedFile {
   buffer: Buffer;
@@ -34,6 +41,8 @@ export class DocumentsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly config: ConfigService<Env, true>,
+    @InjectQueue(DOCUMENT_PROCESSING_QUEUE)
+    private readonly documentQueue: Queue<ProcessDocumentJobData>,
   ) {
     this.maxUploadBytes = this.config.get('MAX_UPLOAD_BYTES', { infer: true });
   }
@@ -155,8 +164,22 @@ export class DocumentsService {
       },
     });
 
+    // Enqueue document for background text extraction & chunking
+    await this.documentQueue.add(
+      PROCESS_DOCUMENT_JOB,
+      { documentId: document.id },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: true,
+      },
+    );
+
     this.logger.log(
-      `Document "${document.title}" (${document.id}) uploaded by user ${userId}`,
+      `Document "${document.title}" (${document.id}) uploaded and queued by user ${userId}`,
     );
 
     return {

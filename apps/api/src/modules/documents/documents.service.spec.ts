@@ -29,12 +29,17 @@ describe('DocumentsService', () => {
     }),
   } as unknown as ConfigService<Env, true>;
 
+  const mockQueue = {
+    add: vi.fn(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     service = new DocumentsService(
       mockPrisma as any,
       mockStorage as any,
       mockConfig,
+      mockQueue as any,
     );
   });
 
@@ -270,6 +275,12 @@ describe('DocumentsService', () => {
           status: 'UPLOADED',
         },
       });
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'process-document',
+        { documentId: 'doc-456-uuid' },
+        expect.any(Object),
+      );
 
       expect(result).toEqual({
         document: {
