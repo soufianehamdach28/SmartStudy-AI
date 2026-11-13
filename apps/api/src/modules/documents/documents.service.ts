@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   Logger,
+  NotFoundException,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
@@ -12,9 +13,13 @@ import { fileTypeFromBuffer } from 'file-type';
 import path from 'node:path';
 import type {
   DocumentExtension,
+  DocumentListQuery,
   DocumentMimeType,
+  DocumentResponse,
   DocumentUploadResponse,
+  PaginatedDocumentsResponse,
 } from '@smartstudy/shared';
+import type { DocumentModel } from '../../generated/prisma/models/Document.js';
 import type { Env } from '../../core/config/env.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { StorageService } from '../../core/storage/storage.service.js';
@@ -183,20 +188,116 @@ export class DocumentsService {
     );
 
     return {
-      document: {
-        id: document.id,
-        userId: document.userId,
-        title: document.title,
-        mimeType: document.mimeType,
-        sizeBytes: document.sizeBytes,
-        status: document.status,
-        errorMessage: document.errorMessage,
-        pageCount: document.pageCount,
-        summary: document.summary,
-        createdAt: document.createdAt.toISOString(),
-        updatedAt: document.updatedAt.toISOString(),
-      },
+      document: this.toDocumentResponse(document),
       message: 'Document uploaded successfully and queued for processing',
+    };
+  }
+
+  /**
+   * Find paginated list of documents for a user, ordered newest first.
+   */
+  async findAllForUser(
+    userId: string,
+    query: DocumentListQuery,
+  ): Promise<PaginatedDocumentsResponse> {
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.document.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.document.count({
+        where: { userId },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items: items.map((doc) => this.toDocumentResponse(doc)),
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  /**
+   * Find a single document owned by the user.
+   * Throws 404 NOT_FOUND if document does not exist or belongs to another user.
+   */
+  async findOneForUser(
+    userId: string,
+    documentId: string,
+  ): Promise<DocumentResponse> {
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document || document.userId !== userId) {
+      throw new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'Document not found.',
+      });
+    }
+
+    return this.toDocumentResponse(document);
+  }
+
+  /**
+   * Delete a document for a user.
+   * Cascades in DB (DocumentChunk, etc.) and deletes the physical S3 object.
+   * Throws 404 NOT_FOUND if document does not exist or belongs to another user.
+   */
+  async deleteForUser(userId: string, documentId: string): Promise<void> {
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document || document.userId !== userId) {
+      throw new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'Document not found.',
+      });
+    }
+
+    // Delete S3 object
+    try {
+      await this.storage.delete(document.storageKey);
+    } catch (err) {
+      this.logger.warn(
+        `Failed to delete S3 object ${document.storageKey} for document ${documentId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    // Delete from DB (Prisma schema has onDelete: Cascade for DocumentChunk)
+    await this.prisma.document.delete({
+      where: { id: documentId },
+    });
+
+    this.logger.log(`Document ${documentId} deleted by user ${userId}`);
+  }
+
+  /**
+   * Map database Document row to public DocumentResponse shape.
+   */
+  private toDocumentResponse(doc: DocumentModel): DocumentResponse {
+    return {
+      id: doc.id,
+      userId: doc.userId,
+      title: doc.title,
+      mimeType: doc.mimeType,
+      sizeBytes: doc.sizeBytes,
+      status: doc.status,
+      errorMessage: doc.errorMessage,
+      pageCount: doc.pageCount,
+      summary: doc.summary,
+      createdAt: doc.createdAt.toISOString(),
+      updatedAt: doc.updatedAt.toISOString(),
     };
   }
 

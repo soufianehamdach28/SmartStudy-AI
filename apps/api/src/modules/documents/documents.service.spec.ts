@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  NotFoundException,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
@@ -14,12 +15,17 @@ describe('DocumentsService', () => {
   const mockPrisma = {
     document: {
       create: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      count: vi.fn(),
+      delete: vi.fn(),
     },
   };
 
   const mockStorage = {
     generateStorageKey: vi.fn(),
     upload: vi.fn(),
+    delete: vi.fn(),
   };
 
   const mockConfig = {
@@ -298,6 +304,216 @@ describe('DocumentsService', () => {
         },
         message: 'Document uploaded successfully and queued for processing',
       });
+    });
+  });
+
+  describe('findAllForUser', () => {
+    it('returns paginated documents with accurate total and totalPages', async () => {
+      const userId = 'user-1';
+      const now = new Date();
+      const mockDocs = [
+        {
+          id: 'doc-1',
+          userId,
+          title: 'doc1.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 100,
+          status: 'READY',
+          errorMessage: null,
+          pageCount: 5,
+          summary: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'doc-2',
+          userId,
+          title: 'doc2.txt',
+          mimeType: 'text/plain',
+          sizeBytes: 200,
+          status: 'UPLOADED',
+          errorMessage: null,
+          pageCount: 1,
+          summary: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+
+      mockPrisma.document.findMany.mockResolvedValue(mockDocs);
+      mockPrisma.document.count.mockResolvedValue(15);
+
+      const result = await service.findAllForUser(userId, { page: 2, limit: 10 });
+
+      expect(mockPrisma.document.findMany).toHaveBeenCalledWith({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip: 10,
+        take: 10,
+      });
+      expect(mockPrisma.document.count).toHaveBeenCalledWith({ where: { userId } });
+
+      expect(result).toEqual({
+        items: [
+          {
+            id: 'doc-1',
+            userId,
+            title: 'doc1.pdf',
+            mimeType: 'application/pdf',
+            sizeBytes: 100,
+            status: 'READY',
+            errorMessage: null,
+            pageCount: 5,
+            summary: null,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+          {
+            id: 'doc-2',
+            userId,
+            title: 'doc2.txt',
+            mimeType: 'text/plain',
+            sizeBytes: 200,
+            status: 'UPLOADED',
+            errorMessage: null,
+            pageCount: 1,
+            summary: null,
+            createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
+          },
+        ],
+        total: 15,
+        page: 2,
+        limit: 10,
+        totalPages: 2,
+      });
+    });
+
+    it('returns empty array when user has no documents', async () => {
+      mockPrisma.document.findMany.mockResolvedValue([]);
+      mockPrisma.document.count.mockResolvedValue(0);
+
+      const result = await service.findAllForUser('user-empty', { page: 1, limit: 10 });
+
+      expect(result).toEqual({
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+    });
+  });
+
+  describe('findOneForUser', () => {
+    it('returns document when caller is owner', async () => {
+      const userId = 'user-owner';
+      const docId = 'doc-123';
+      const now = new Date();
+      const mockDoc = {
+        id: docId,
+        userId,
+        title: 'biology.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 500,
+        status: 'READY',
+        errorMessage: null,
+        pageCount: 10,
+        summary: 'A summary',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      mockPrisma.document.findUnique.mockResolvedValue(mockDoc);
+
+      const result = await service.findOneForUser(userId, docId);
+
+      expect(mockPrisma.document.findUnique).toHaveBeenCalledWith({
+        where: { id: docId },
+      });
+      expect(result).toEqual({
+        id: docId,
+        userId,
+        title: 'biology.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 500,
+        status: 'READY',
+        errorMessage: null,
+        pageCount: 10,
+        summary: 'A summary',
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      });
+    });
+
+    it('throws 404 NOT_FOUND when document does not exist', async () => {
+      mockPrisma.document.findUnique.mockResolvedValue(null);
+
+      await expect(service.findOneForUser('user-1', 'doc-missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws 404 NOT_FOUND when caller is not the owner (IDOR protection)', async () => {
+      mockPrisma.document.findUnique.mockResolvedValue({
+        id: 'doc-other',
+        userId: 'owner-user',
+        title: 'private.pdf',
+      });
+
+      await expect(service.findOneForUser('attacker-user', 'doc-other')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('deleteForUser', () => {
+    it('deletes S3 file and database document record when caller is owner', async () => {
+      const userId = 'user-owner';
+      const docId = 'doc-to-delete';
+      const storageKey = 'user-owner/file-uuid.pdf';
+
+      mockPrisma.document.findUnique.mockResolvedValue({
+        id: docId,
+        userId,
+        storageKey,
+      });
+      mockStorage.delete.mockResolvedValue(undefined);
+      mockPrisma.document.delete.mockResolvedValue({ id: docId });
+
+      await service.deleteForUser(userId, docId);
+
+      expect(mockPrisma.document.findUnique).toHaveBeenCalledWith({
+        where: { id: docId },
+      });
+      expect(mockStorage.delete).toHaveBeenCalledWith(storageKey);
+      expect(mockPrisma.document.delete).toHaveBeenCalledWith({
+        where: { id: docId },
+      });
+    });
+
+    it('throws 404 NOT_FOUND when trying to delete non-existent document', async () => {
+      mockPrisma.document.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteForUser('user-1', 'doc-missing')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockStorage.delete).not.toHaveBeenCalled();
+      expect(mockPrisma.document.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws 404 NOT_FOUND when trying to delete another users document (IDOR protection)', async () => {
+      mockPrisma.document.findUnique.mockResolvedValue({
+        id: 'doc-other',
+        userId: 'owner-user',
+        storageKey: 'owner/file.pdf',
+      });
+
+      await expect(service.deleteForUser('attacker-user', 'doc-other')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockStorage.delete).not.toHaveBeenCalled();
+      expect(mockPrisma.document.delete).not.toHaveBeenCalled();
     });
   });
 });
