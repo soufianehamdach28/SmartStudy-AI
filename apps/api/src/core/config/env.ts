@@ -48,13 +48,13 @@ export const envSchema = z.object({
   JWT_REFRESH_TTL: z.string().default('30d'),
 
   // LLM (Step 3)
-  LLM_PROVIDER: z.string().default('ollama'),
-  LLM_FALLBACK_PROVIDERS: z.string().default('gemini,groq,mistral'),
+  LLM_PROVIDER: z.string().default('gemini'),
+  LLM_FALLBACK_PROVIDERS: z.string().default('ollama,groq,mistral'),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   OLLAMA_BASE_URL: z.string().url().optional(),
-  OLLAMA_MODEL: z.string().optional(),
+  OLLAMA_MODEL: z.string().default('llama3.2'),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   GROQ_API_KEY: z.string().optional(),
   GROQ_MODEL: z.string().optional(),
   MISTRAL_API_KEY: z.string().optional(),
