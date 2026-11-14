@@ -32,6 +32,7 @@ model User {
   createdAt     DateTime       @default(now())
   refreshTokens RefreshToken[]
   documents     Document[]
+  quizAttempts  QuizAttempt[]
 
   @@map("users")
 }
@@ -65,26 +66,89 @@ model Document {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chunks DocumentChunk[]
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks      DocumentChunk[]
+  flashcards  Flashcard[]
+  quizzes     Quiz[]
 
   @@index([userId, createdAt])
   @@map("documents")
 }
 
 model DocumentChunk {
-  id         String                   @id @default(uuid())
-  documentId String
-  index      Int
-  page       Int
-  text       String                   @db.Text
-  charStart  Int
-  charEnd    Int
-  tsv        Unsupported("tsvector")? @default(dbgenerated())
-  createdAt  DateTime                 @default(now())
+  id            String                   @id @default(uuid())
+  documentId    String
+  index         Int
+  page          Int
+  text          String                   @db.Text
+  charStart     Int
+  charEnd       Int
+  tsv           Unsupported("tsvector")? @default(dbgenerated())
+  createdAt     DateTime                 @default(now())
 
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  quizQuestions QuizQuestion[]
 
   @@index([documentId, index])
   @@map("document_chunks")
+}
+
+model Flashcard {
+  id         String   @id @default(uuid())
+  documentId String
+  front      String   @db.Text
+  back       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("flashcards")
+}
+
+model Quiz {
+  id         String   @id @default(uuid())
+  documentId String
+  title      String
+  createdAt  DateTime @default(now())
+
+  document  Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([documentId])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id            String  @id @default(uuid())
+  quizId        String
+  prompt        String  @db.Text
+  options       Json
+  correctIndex  Int
+  explanation   String  @db.Text
+  sourceChunkId String?
+
+  quiz        Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  sourceChunk DocumentChunk? @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)
+
+  @@index([quizId])
+  @@index([sourceChunkId])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id          String   @id @default(uuid())
+  quizId      String
+  userId      String
+  answers     Json
+  score       Float
+  completedAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@index([userId])
+  @@map("quiz_attempts")
 }
