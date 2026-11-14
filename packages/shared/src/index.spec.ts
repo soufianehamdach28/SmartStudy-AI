@@ -6,11 +6,25 @@ import {
   documentListQuerySchema,
   documentMimeTypeSchema,
   documentResponseSchema,
+  documentSummaryResponseSchema,
   documentUploadResponseSchema,
+  flashcardSchema,
+  flashcardsResponseSchema,
+  generateFlashcardsRequestSchema,
+  generateQuizRequestSchema,
+  llmFlashcardsOutputSchema,
+  llmQuizOutputSchema,
+  llmSummaryOutputSchema,
   loginRequestSchema,
   paginatedDocumentsResponseSchema,
+  quizAttemptResponseSchema,
+  quizQuestionSchema,
+  quizResponseSchema,
   refreshTokenRequestSchema,
   registerRequestSchema,
+  submitQuizAttemptRequestSchema,
+  usageKindSchema,
+  usageQuotaResponseSchema,
   userProfileSchema,
 } from './index.js';
 
@@ -189,5 +203,180 @@ describe('document schemas', () => {
     expect(parsed.page).toBe(1);
     expect(parsed.charStart).toBe(0);
     expect(parsed.charEnd).toBe(35);
+  });
+});
+
+describe('AI learning schemas', () => {
+  const docId = '123e4567-e89b-12d3-a456-426614174000';
+  const quizId = '223e4567-e89b-12d3-a456-426614174001';
+  const questionId = '323e4567-e89b-12d3-a456-426614174002';
+  const userId = '423e4567-e89b-12d3-a456-426614174003';
+  const chunkId = '523e4567-e89b-12d3-a456-426614174004';
+
+  it('validates LLM summary output and document summary response', () => {
+    const llmSummary = llmSummaryOutputSchema.parse({
+      summary: '# Overview\nThis chapter covers thermodynamics.',
+      keyTakeaways: ['First law conserves energy', 'Entropy increases'],
+    });
+    expect(llmSummary.keyTakeaways).toHaveLength(2);
+
+    const apiSummary = documentSummaryResponseSchema.parse({
+      documentId: docId,
+      summary: llmSummary.summary,
+      cached: false,
+    });
+    expect(apiSummary.cached).toBe(false);
+
+    expect(
+      llmSummaryOutputSchema.safeParse({ summary: 'Text', keyTakeaways: [] }).success,
+    ).toBe(false);
+  });
+
+  it('validates flashcard request defaults, bounds, LLM output and response', () => {
+    const defaultReq = generateFlashcardsRequestSchema.parse({});
+    expect(defaultReq.count).toBe(10);
+
+    const coercedReq = generateFlashcardsRequestSchema.parse({ count: '15' });
+    expect(coercedReq.count).toBe(15);
+
+    expect(generateFlashcardsRequestSchema.safeParse({ count: 0 }).success).toBe(false);
+    expect(generateFlashcardsRequestSchema.safeParse({ count: 31 }).success).toBe(false);
+
+    const llmOut = llmFlashcardsOutputSchema.parse({
+      flashcards: [{ front: 'What is ATP?', back: 'Energy currency of cells' }],
+    });
+    expect(llmOut.flashcards).toHaveLength(1);
+
+    const card = flashcardSchema.parse({
+      id: '623e4567-e89b-12d3-a456-426614174005',
+      documentId: docId,
+      front: 'What is ATP?',
+      back: 'Energy currency of cells',
+    });
+
+    const response = flashcardsResponseSchema.parse({
+      documentId: docId,
+      flashcards: [card],
+    });
+    expect(response.flashcards).toHaveLength(1);
+  });
+
+  it('validates quiz generation request defaults and bounds', () => {
+    const defaultReq = generateQuizRequestSchema.parse({});
+    expect(defaultReq.questionCount).toBe(5);
+    expect(defaultReq.title).toBeUndefined();
+
+    const customReq = generateQuizRequestSchema.parse({
+      questionCount: '12',
+      title: '  Midterm Prep  ',
+    });
+    expect(customReq.questionCount).toBe(12);
+    expect(customReq.title).toBe('Midterm Prep');
+
+    expect(generateQuizRequestSchema.safeParse({ questionCount: 0 }).success).toBe(false);
+    expect(generateQuizRequestSchema.safeParse({ questionCount: 21 }).success).toBe(false);
+  });
+
+  it('validates LLM quiz output and enforces 4 options and correctIndex 0-3', () => {
+    const validQuestion = {
+      prompt: 'Which organelle produces ATP?',
+      options: ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi'],
+      correctIndex: 1,
+      explanation: 'Mitochondria are the powerhouse of the cell.',
+      sourceChunkId: chunkId,
+    };
+
+    const parsed = llmQuizOutputSchema.parse({
+      title: 'Cell Biology Quiz',
+      questions: [validQuestion],
+    });
+    expect(parsed.questions[0]?.correctIndex).toBe(1);
+
+    // Rejects wrong number of options
+    expect(
+      llmQuizOutputSchema.safeParse({
+        title: 'Bad Quiz',
+        questions: [{ ...validQuestion, options: ['A', 'B'] }],
+      }).success,
+    ).toBe(false);
+
+    // Rejects out-of-range correctIndex
+    expect(
+      llmQuizOutputSchema.safeParse({
+        title: 'Bad Quiz',
+        questions: [{ ...validQuestion, correctIndex: 4 }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('validates full quiz response and quiz attempt request/response', () => {
+    const question = quizQuestionSchema.parse({
+      id: questionId,
+      quizId,
+      prompt: 'What is 2 + 2?',
+      options: ['3', '4', '5', '6'],
+      correctIndex: 1,
+      explanation: 'Basic arithmetic.',
+      sourceChunkId: null,
+    });
+
+    const quiz = quizResponseSchema.parse({
+      id: quizId,
+      documentId: docId,
+      title: 'Math Basics',
+      createdAt: new Date().toISOString(),
+      questions: [question],
+    });
+    expect(quiz.questions).toHaveLength(1);
+
+    const attemptReq = submitQuizAttemptRequestSchema.parse({
+      answers: [{ questionId, selectedIndex: 1 }],
+    });
+    expect(attemptReq.answers[0]?.selectedIndex).toBe(1);
+
+    expect(submitQuizAttemptRequestSchema.safeParse({ answers: [] }).success).toBe(false);
+    expect(
+      submitQuizAttemptRequestSchema.safeParse({
+        answers: [{ questionId, selectedIndex: -1 }],
+      }).success,
+    ).toBe(false);
+
+    const attemptRes = quizAttemptResponseSchema.parse({
+      id: '723e4567-e89b-12d3-a456-426614174006',
+      quizId,
+      userId,
+      score: 100,
+      correctCount: 1,
+      totalQuestions: 1,
+      answers: [
+        {
+          questionId,
+          selectedIndex: 1,
+          correctIndex: 1,
+          isCorrect: true,
+          explanation: 'Basic arithmetic.',
+        },
+      ],
+      completedAt: new Date().toISOString(),
+    });
+    expect(attemptRes.score).toBe(100);
+  });
+
+  it('validates usage kinds and quota response', () => {
+    expect(usageKindSchema.safeParse('SUMMARY').success).toBe(true);
+    expect(usageKindSchema.safeParse('FLASHCARDS').success).toBe(true);
+    expect(usageKindSchema.safeParse('QUIZ').success).toBe(true);
+    expect(usageKindSchema.safeParse('CHAT').success).toBe(true);
+    expect(usageKindSchema.safeParse('UNKNOWN').success).toBe(false);
+
+    const quota = usageQuotaResponseSchema.parse({
+      dailyLimit: 20,
+      dailyUsed: 3,
+      dailyRemaining: 17,
+      monthlyLimit: 300,
+      monthlyUsed: 15,
+      monthlyRemaining: 285,
+    });
+    expect(quota.dailyRemaining).toBe(17);
   });
 });

@@ -180,3 +180,155 @@ export const authResponseSchema = z.object({
   user: userProfileSchema,
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+// ============================================================================
+// AI Learning Tools Schemas (Summaries, Flashcards, Quizzes, Usage)
+// ============================================================================
+
+/** Structured summary JSON output expected from the LLM. */
+export const llmSummaryOutputSchema = z.object({
+  summary: z.string().min(1),
+  keyTakeaways: z.array(z.string().min(1)).min(1),
+});
+export type LlmSummaryOutput = z.infer<typeof llmSummaryOutputSchema>;
+
+/** Response returned by POST /api/documents/:id/summarize. */
+export const documentSummaryResponseSchema = z.object({
+  documentId: z.string().uuid(),
+  summary: z.string().min(1),
+  cached: z.boolean(),
+});
+export type DocumentSummaryResponse = z.infer<typeof documentSummaryResponseSchema>;
+
+/** Request payload for POST /api/documents/:id/flashcards. */
+export const generateFlashcardsRequestSchema = z.object({
+  count: z.coerce.number().int().min(1).max(30).default(10),
+});
+export type GenerateFlashcardsRequest = z.infer<typeof generateFlashcardsRequestSchema>;
+
+/** Individual flashcard shape expected from the LLM. */
+export const llmFlashcardItemSchema = z.object({
+  front: z.string().min(1),
+  back: z.string().min(1),
+});
+export type LlmFlashcardItem = z.infer<typeof llmFlashcardItemSchema>;
+
+/** Structured flashcards JSON output expected from the LLM. */
+export const llmFlashcardsOutputSchema = z.object({
+  flashcards: z.array(llmFlashcardItemSchema).min(1),
+});
+export type LlmFlashcardsOutput = z.infer<typeof llmFlashcardsOutputSchema>;
+
+/** Flashcard representation stored in DB and returned over the wire. */
+export const flashcardSchema = z.object({
+  id: z.string().uuid(),
+  documentId: z.string().uuid(),
+  front: z.string().min(1),
+  back: z.string().min(1),
+});
+export type Flashcard = z.infer<typeof flashcardSchema>;
+
+/** Response returned by POST /api/documents/:id/flashcards. */
+export const flashcardsResponseSchema = z.object({
+  documentId: z.string().uuid(),
+  flashcards: z.array(flashcardSchema),
+});
+export type FlashcardsResponse = z.infer<typeof flashcardsResponseSchema>;
+
+/** Request payload for POST /api/documents/:id/quizzes. */
+export const generateQuizRequestSchema = z.object({
+  questionCount: z.coerce.number().int().min(1).max(20).default(5),
+  title: z.string().trim().min(1).max(120).optional(),
+});
+export type GenerateQuizRequest = z.infer<typeof generateQuizRequestSchema>;
+
+/** Individual quiz question shape expected from the LLM. */
+export const llmQuizQuestionItemSchema = z.object({
+  prompt: z.string().min(1),
+  options: z.array(z.string().min(1)).length(4),
+  correctIndex: z.number().int().min(0).max(3),
+  explanation: z.string().min(1),
+  sourceChunkId: z.string().uuid().nullable().optional(),
+});
+export type LlmQuizQuestionItem = z.infer<typeof llmQuizQuestionItemSchema>;
+
+/** Structured quiz JSON output expected from the LLM. */
+export const llmQuizOutputSchema = z.object({
+  title: z.string().min(1),
+  questions: z.array(llmQuizQuestionItemSchema).min(1),
+});
+export type LlmQuizOutput = z.infer<typeof llmQuizOutputSchema>;
+
+/** Quiz question representation returned over the wire. */
+export const quizQuestionSchema = z.object({
+  id: z.string().uuid(),
+  quizId: z.string().uuid(),
+  prompt: z.string().min(1),
+  options: z.array(z.string().min(1)).length(4),
+  correctIndex: z.number().int().min(0).max(3),
+  explanation: z.string().min(1),
+  sourceChunkId: z.string().uuid().nullable().optional(),
+});
+export type QuizQuestion = z.infer<typeof quizQuestionSchema>;
+
+/** Full quiz representation returned by POST /api/documents/:id/quizzes. */
+export const quizResponseSchema = z.object({
+  id: z.string().uuid(),
+  documentId: z.string().uuid(),
+  title: z.string().min(1),
+  createdAt: z.string().datetime(),
+  questions: z.array(quizQuestionSchema).min(1),
+});
+export type QuizResponse = z.infer<typeof quizResponseSchema>;
+
+/** Single answer entry submitted in a quiz attempt. */
+export const quizAnswerInputSchema = z.object({
+  questionId: z.string().uuid(),
+  selectedIndex: z.number().int().min(0).max(3),
+});
+export type QuizAnswerInput = z.infer<typeof quizAnswerInputSchema>;
+
+/** Request payload for POST /api/quizzes/:id/attempts. */
+export const submitQuizAttemptRequestSchema = z.object({
+  answers: z.array(quizAnswerInputSchema).min(1),
+});
+export type SubmitQuizAttemptRequest = z.infer<typeof submitQuizAttemptRequestSchema>;
+
+/** Graded answer breakdown for a single quiz question. */
+export const quizAnswerResultSchema = z.object({
+  questionId: z.string().uuid(),
+  selectedIndex: z.number().int().min(0).max(3),
+  correctIndex: z.number().int().min(0).max(3),
+  isCorrect: z.boolean(),
+  explanation: z.string().min(1),
+});
+export type QuizAnswerResult = z.infer<typeof quizAnswerResultSchema>;
+
+/** Response returned by POST /api/quizzes/:id/attempts. */
+export const quizAttemptResponseSchema = z.object({
+  id: z.string().uuid(),
+  quizId: z.string().uuid(),
+  userId: z.string().uuid(),
+  score: z.number().min(0).max(100),
+  correctCount: z.number().int().nonnegative(),
+  totalQuestions: z.number().int().positive(),
+  answers: z.array(quizAnswerResultSchema).min(1),
+  completedAt: z.string().datetime(),
+});
+export type QuizAttemptResponse = z.infer<typeof quizAttemptResponseSchema>;
+
+/** Kinds of tracked AI usage operations. */
+export const USAGE_KINDS = ['SUMMARY', 'FLASHCARDS', 'QUIZ', 'CHAT'] as const;
+export const usageKindSchema = z.enum(USAGE_KINDS);
+export type UsageKind = z.infer<typeof usageKindSchema>;
+
+/** Response returned by GET /api/usage. */
+export const usageQuotaResponseSchema = z.object({
+  dailyLimit: z.number().int().nonnegative(),
+  dailyUsed: z.number().int().nonnegative(),
+  dailyRemaining: z.number().int().nonnegative(),
+  monthlyLimit: z.number().int().nonnegative(),
+  monthlyUsed: z.number().int().nonnegative(),
+  monthlyRemaining: z.number().int().nonnegative(),
+});
+export type UsageQuotaResponse = z.infer<typeof usageQuotaResponseSchema>;
