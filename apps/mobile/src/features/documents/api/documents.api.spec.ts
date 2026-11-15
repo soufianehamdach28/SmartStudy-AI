@@ -3,6 +3,7 @@ import {
   deleteDocument,
   fetchDocument,
   fetchDocuments,
+  fetchDocumentSummary,
   parseDocumentErrorMessage,
   uploadDocument,
 } from './documents.api';
@@ -115,6 +116,23 @@ describe('documents.api', () => {
     });
   });
 
+  describe('fetchDocumentSummary', () => {
+    it('calls POST /documents/:id/summarize and returns summary response', async () => {
+      const mockSummary = {
+        documentId: 'doc-uuid-1',
+        summary: '# Course Summary\nKey points.',
+        cached: true,
+      };
+
+      (apiClient.post as jest.Mock).mockResolvedValueOnce({ data: mockSummary });
+
+      const result = await fetchDocumentSummary('doc-uuid-1');
+
+      expect(apiClient.post).toHaveBeenCalledWith('/documents/doc-uuid-1/summarize');
+      expect(result).toEqual(mockSummary);
+    });
+  });
+
   describe('parseDocumentErrorMessage', () => {
     function createAxiosError(status: number, data?: unknown): AxiosError {
       const error = new AxiosError('Request failed');
@@ -168,6 +186,24 @@ describe('documents.api', () => {
       });
       expect(parseDocumentErrorMessage(error)).toBe(
         'The document is still being processed. Please wait a moment.',
+      );
+    });
+
+    it('translates QUOTA_EXCEEDED code', () => {
+      const error = createAxiosError(429, {
+        error: { code: 'QUOTA_EXCEEDED' },
+      });
+      expect(parseDocumentErrorMessage(error)).toBe(
+        'Daily AI request quota reached. Please try again tomorrow.',
+      );
+    });
+
+    it('translates LLM_UNAVAILABLE code', () => {
+      const error = createAxiosError(503, {
+        error: { code: 'LLM_UNAVAILABLE' },
+      });
+      expect(parseDocumentErrorMessage(error)).toBe(
+        'AI provider is temporarily unavailable. Please try again in a few moments.',
       );
     });
 

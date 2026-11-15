@@ -9,9 +9,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { EmptyView } from '../../../shared/components/EmptyView';
 import { ErrorView } from '../../../shared/components/ErrorView';
 import { LoadingView } from '../../../shared/components/LoadingView';
+import type { AppNavigationProp } from '../../../app/navigation/types';
 import { useAuthStore } from '../../auth/store/auth.store';
 import { parseDocumentErrorMessage } from '../api/documents.api';
 import { DocumentCard } from '../components/DocumentCard';
@@ -25,6 +27,7 @@ import { pickCourseDocument } from '../lib/document-picker';
 import type { DocumentResponse } from '@smartstudy/shared';
 
 export function DocumentsScreen() {
+  const navigation = useNavigation<AppNavigationProp>();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
 
@@ -117,6 +120,24 @@ export function DocumentsScreen() {
         renderItem={({ item }) => (
           <DocumentCard
             document={item}
+            onPress={() => {
+              if (item.status === 'READY') {
+                navigation.navigate('DocumentSummary', {
+                  documentId: item.id,
+                  documentTitle: item.title,
+                });
+              } else if (item.status === 'FAILED') {
+                Alert.alert(
+                  'Processing Failed',
+                  item.errorMessage ?? 'This document could not be processed.',
+                );
+              } else {
+                Alert.alert(
+                  'Processing Document',
+                  'This document is still being extracted. Please wait a moment.',
+                );
+              }
+            }}
             onDelete={() => handleDelete(item.id)}
             isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
           />

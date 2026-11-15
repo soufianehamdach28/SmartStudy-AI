@@ -10,6 +10,14 @@ import * as useDocumentsModule from '../hooks/useDocuments';
 import * as documentPickerModule from '../lib/document-picker';
 import { useAuthStore } from '../../auth/store/auth.store';
 
+const mockNavigate = jest.fn();
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({
+    navigate: mockNavigate,
+    goBack: jest.fn(),
+  }),
+}));
+
 jest.mock('../hooks/useDocuments');
 jest.mock('../lib/document-picker');
 jest.spyOn(Alert, 'alert');

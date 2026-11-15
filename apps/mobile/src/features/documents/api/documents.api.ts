@@ -2,6 +2,7 @@ import axios from 'axios';
 import {
   type DocumentListQuery,
   type DocumentResponse,
+  type DocumentSummaryResponse,
   type DocumentUploadResponse,
   type PaginatedDocumentsResponse,
 } from '@smartstudy/shared';
@@ -73,6 +74,14 @@ export async function deleteDocument(id: string): Promise<void> {
 }
 
 /**
+ * Fetch or generate the AI summary for a document.
+ */
+export async function fetchDocumentSummary(id: string): Promise<DocumentSummaryResponse> {
+  const response = await apiClient.post<DocumentSummaryResponse>(`/documents/${id}/summarize`);
+  return response.data;
+}
+
+/**
  * Map API error responses and network errors to friendly user-facing messages.
  */
 export function parseDocumentErrorMessage(error: unknown): string {
@@ -101,6 +110,12 @@ export function parseDocumentErrorMessage(error: unknown): string {
         return 'Document not found or access denied.';
       case 'VALIDATION_ERROR':
         return message ?? 'Invalid document request.';
+      case 'QUOTA_EXCEEDED':
+        return message ?? 'Daily AI request quota reached. Please try again tomorrow.';
+      case 'LLM_UNAVAILABLE':
+        return 'AI provider is temporarily unavailable. Please try again in a few moments.';
+      case 'LLM_INVALID_OUTPUT':
+        return 'Unable to format summary properly. Please try again.';
       case 'UNAUTHORIZED':
       case 'TOKEN_EXPIRED':
         return 'Your session has expired. Please log in again.';
