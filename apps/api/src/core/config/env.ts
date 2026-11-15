@@ -50,11 +50,11 @@ export const envSchema = z.object({
   // LLM (Step 3)
   LLM_PROVIDER: z.string().default('gemini'),
   LLM_FALLBACK_PROVIDERS: z.string().default('ollama,groq,mistral'),
-  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   OLLAMA_BASE_URL: z.string().url().optional(),
   OLLAMA_MODEL: z.string().default('llama3.2'),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
   GROQ_API_KEY: z.string().optional(),
   GROQ_MODEL: z.string().optional(),
   MISTRAL_API_KEY: z.string().optional(),
