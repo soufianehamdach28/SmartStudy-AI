@@ -74,6 +74,7 @@ export class MockLlmService implements LlmDriver {
 
     return {
       text,
+      data: text,
       usage,
       model: 'mock-model',
       provider: this.providerName,
@@ -100,6 +101,7 @@ export class MockLlmService implements LlmDriver {
 
     return {
       text: json,
+      data: json,
       usage,
       model: 'mock-model',
       provider: this.providerName,

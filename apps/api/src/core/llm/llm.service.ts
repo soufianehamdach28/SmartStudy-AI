@@ -8,6 +8,7 @@ import {
   type LlmClient,
   type LlmDriver,
   type LlmJsonOptions,
+  type LlmJsonResult,
   type LlmResult,
   type LlmTextOptions,
   LlmInvalidOutputException,
@@ -77,7 +78,7 @@ export class LlmService implements LlmClient {
     });
   }
 
-  async generateJson<T>(options: LlmJsonOptions<T>): Promise<LlmResult<T>> {
+  async generateJson<T>(options: LlmJsonOptions<T>): Promise<LlmJsonResult<T>> {
     // 1. Initial attempt using active provider (with fallback support)
     const initialResult = await this.executeWithFallback(async (driver) => {
       return driver.generateJsonRaw({

@@ -174,6 +174,7 @@ export class GeminiLlmService implements LlmDriver {
 
     return {
       text: textPart,
+      data: textPart,
       usage,
       model,
       provider: this.providerName,

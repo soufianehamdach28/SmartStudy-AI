@@ -29,6 +29,8 @@ export interface LlmResult<T = string> {
   latencyMs: number;
 }
 
+export type LlmJsonResult<T> = LlmResult<T> & { data: T };
+
 /**
  * Options for text generation requests.
  */
@@ -66,7 +68,7 @@ export interface LlmDriver {
  */
 export interface LlmClient {
   generateText(options: LlmTextOptions): Promise<LlmResult<string>>;
-  generateJson<T>(options: LlmJsonOptions<T>): Promise<LlmResult<T>>;
+  generateJson<T>(options: LlmJsonOptions<T>): Promise<LlmJsonResult<T>>;
 }
 
 /**

@@ -168,6 +168,7 @@ export class OllamaLlmService implements LlmDriver {
 
       return {
         text,
+        data: text,
         usage,
         model,
         provider: this.providerName,
@@ -195,6 +196,7 @@ export class OllamaLlmService implements LlmDriver {
 
       return {
         text,
+        data: text,
         usage,
         model,
         provider: this.providerName,

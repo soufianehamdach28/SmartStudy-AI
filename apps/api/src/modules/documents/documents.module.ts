@@ -1,5 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module.js';
 import { DOCUMENT_PROCESSING_QUEUE } from './documents.constants.js';
 import { DocumentsController } from './documents.controller.js';
 import { DocumentsService } from './documents.service.js';
@@ -12,6 +13,7 @@ import { DocumentExtractorService } from './services/document-extractor.service.
     BullModule.registerQueue({
       name: DOCUMENT_PROCESSING_QUEUE,
     }),
+    AiModule,
   ],
   controllers: [DocumentsController],
   providers: [

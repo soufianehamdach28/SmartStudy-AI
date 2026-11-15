@@ -17,6 +17,7 @@ import {
   documentListQuerySchema,
   type DocumentListQuery,
   type DocumentResponse,
+  type DocumentSummaryResponse,
   type DocumentUploadResponse,
   type PaginatedDocumentsResponse,
 } from '@smartstudy/shared';
@@ -26,12 +27,16 @@ import {
 } from '../../core/common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../../core/common/guards/jwt-auth.guard.js';
 import { ZodValidationPipe } from '../../core/common/pipes/zod-validation.pipe.js';
+import { SummaryService } from '../ai/summary.service.js';
 import { DocumentsService } from './documents.service.js';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly summaryService: SummaryService,
+  ) {}
 
   /**
    * Upload a course document (PDF or TXT).
@@ -81,6 +86,19 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<void> {
     await this.documentsService.deleteForUser(user.userId, id);
+  }
+
+  /**
+   * Summarize a document using AI.
+   * Checks DB cache first, enforces user quota, isolates content against injection,
+   * stores to DB cache, and returns 200 OK.
+   */
+  @Post(':id/summarize')
+  async summarize(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<DocumentSummaryResponse> {
+    return this.summaryService.summarizeDocument(user.userId, id);
   }
 }
 
