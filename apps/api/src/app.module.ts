@@ -10,6 +10,7 @@ import { LlmModule } from './core/llm/llm.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
+import { UsageModule } from './modules/usage/usage.module.js';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { DocumentsModule } from './modules/documents/documents.module.js';
     HealthModule,
     AuthModule,
     DocumentsModule,
+    UsageModule,
   ],
   providers: [
     {

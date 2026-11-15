@@ -24,6 +24,18 @@ enum DocumentStatus {
   FAILED
 }
 
+enum UsageStatus {
+  SUCCESS
+  FAILED
+}
+
+enum UsageKind {
+  SUMMARY
+  FLASHCARDS
+  QUIZ
+  CHAT
+}
+
 model User {
   id            String         @id @default(uuid())
   email         String         @unique
@@ -33,6 +45,7 @@ model User {
   refreshTokens RefreshToken[]
   documents     Document[]
   quizAttempts  QuizAttempt[]
+  usageRecords  UsageRecord[]
 
   @@map("users")
 }
@@ -151,4 +164,23 @@ model QuizAttempt {
   @@index([quizId])
   @@index([userId])
   @@map("quiz_attempts")
+}
+
+model UsageRecord {
+  id           String      @id @default(uuid())
+  userId       String
+  kind         UsageKind
+  provider     String
+  model        String
+  tokensIn     Int         @default(0)
+  tokensOut    Int         @default(0)
+  costEstimate Float       @default(0.0)
+  status       UsageStatus @default(SUCCESS)
+  latencyMs    Int         @default(0)
+  createdAt    DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("usage_records")
 }
