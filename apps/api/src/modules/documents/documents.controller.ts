@@ -17,13 +17,16 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import {
   documentListQuerySchema,
   generateFlashcardsRequestSchema,
+  generateQuizRequestSchema,
   type DocumentListQuery,
   type DocumentResponse,
   type DocumentSummaryResponse,
   type DocumentUploadResponse,
   type FlashcardsResponse,
   type GenerateFlashcardsRequest,
+  type GenerateQuizRequest,
   type PaginatedDocumentsResponse,
+  type QuizResponse,
 } from '@smartstudy/shared';
 import {
   CurrentUser,
@@ -32,6 +35,7 @@ import {
 import { JwtAuthGuard } from '../../core/common/guards/jwt-auth.guard.js';
 import { ZodValidationPipe } from '../../core/common/pipes/zod-validation.pipe.js';
 import { FlashcardsService } from '../ai/flashcards.service.js';
+import { QuizService } from '../ai/quiz.service.js';
 import { SummaryService } from '../ai/summary.service.js';
 import { DocumentsService } from './documents.service.js';
 
@@ -42,6 +46,7 @@ export class DocumentsController {
     private readonly documentsService: DocumentsService,
     private readonly summaryService: SummaryService,
     private readonly flashcardsService: FlashcardsService,
+    private readonly quizService: QuizService,
   ) {}
 
   /**
@@ -129,6 +134,30 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<FlashcardsResponse> {
     return this.flashcardsService.getFlashcards(user.userId, id);
+  }
+
+  /**
+   * Generate a multi-choice quiz for a document using AI.
+   */
+  @Post(':id/quizzes')
+  async generateQuiz(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body(new ZodValidationPipe(generateQuizRequestSchema.optional().default({ questionCount: 5 })))
+    body: GenerateQuizRequest,
+  ): Promise<QuizResponse> {
+    return this.quizService.generateQuiz(user.userId, id, body);
+  }
+
+  /**
+   * Get previously generated quizzes for a document.
+   */
+  @Get(':id/quizzes')
+  async getQuizzes(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<QuizResponse[]> {
+    return this.quizService.getDocumentQuizzes(user.userId, id);
   }
 }
 

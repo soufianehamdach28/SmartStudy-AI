@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentUserPayload } from '../../core/common/decorators/current-user.decorator.js';
 import type { FlashcardsService } from '../ai/flashcards.service.js';
+import type { QuizService } from '../ai/quiz.service.js';
 import type { SummaryService } from '../ai/summary.service.js';
 import { DocumentsController } from './documents.controller.js';
 import type { DocumentsService } from './documents.service.js';
@@ -14,6 +15,10 @@ describe('DocumentsController - AI endpoints', () => {
   let flashcardsServiceMock: {
     generateFlashcards: ReturnType<typeof vi.fn>;
     getFlashcards: ReturnType<typeof vi.fn>;
+  };
+  let quizServiceMock: {
+    generateQuiz: ReturnType<typeof vi.fn>;
+    getDocumentQuizzes: ReturnType<typeof vi.fn>;
   };
 
   const user: CurrentUserPayload = {
@@ -32,11 +37,16 @@ describe('DocumentsController - AI endpoints', () => {
       generateFlashcards: vi.fn(),
       getFlashcards: vi.fn(),
     };
+    quizServiceMock = {
+      generateQuiz: vi.fn(),
+      getDocumentQuizzes: vi.fn(),
+    };
 
     controller = new DocumentsController(
       documentsServiceMock as DocumentsService,
       summaryServiceMock as unknown as SummaryService,
       flashcardsServiceMock as unknown as FlashcardsService,
+      quizServiceMock as unknown as QuizService,
     );
   });
 
@@ -96,6 +106,42 @@ describe('DocumentsController - AI endpoints', () => {
     const result = await controller.getFlashcards(user, docId);
 
     expect(flashcardsServiceMock.getFlashcards).toHaveBeenCalledWith(user.userId, docId);
+    expect(result).toEqual(expectedResponse);
+  });
+
+  it('delegates generateQuiz request to QuizService', async () => {
+    const expectedResponse = {
+      id: 'quiz-123',
+      documentId: docId,
+      title: 'Biology Quiz',
+      createdAt: '2026-11-15T12:00:00.000Z',
+      questions: [],
+    };
+
+    quizServiceMock.generateQuiz.mockResolvedValue(expectedResponse);
+
+    const result = await controller.generateQuiz(user, docId, { questionCount: 5 });
+
+    expect(quizServiceMock.generateQuiz).toHaveBeenCalledWith(user.userId, docId, { questionCount: 5 });
+    expect(result).toEqual(expectedResponse);
+  });
+
+  it('delegates getQuizzes request to QuizService', async () => {
+    const expectedResponse = [
+      {
+        id: 'quiz-123',
+        documentId: docId,
+        title: 'Biology Quiz',
+        createdAt: '2026-11-15T12:00:00.000Z',
+        questions: [],
+      },
+    ];
+
+    quizServiceMock.getDocumentQuizzes.mockResolvedValue(expectedResponse);
+
+    const result = await controller.getQuizzes(user, docId);
+
+    expect(quizServiceMock.getDocumentQuizzes).toHaveBeenCalledWith(user.userId, docId);
     expect(result).toEqual(expectedResponse);
   });
 });
