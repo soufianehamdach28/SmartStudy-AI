@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -15,10 +16,13 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   documentListQuerySchema,
+  generateFlashcardsRequestSchema,
   type DocumentListQuery,
   type DocumentResponse,
   type DocumentSummaryResponse,
   type DocumentUploadResponse,
+  type FlashcardsResponse,
+  type GenerateFlashcardsRequest,
   type PaginatedDocumentsResponse,
 } from '@smartstudy/shared';
 import {
@@ -27,6 +31,7 @@ import {
 } from '../../core/common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../../core/common/guards/jwt-auth.guard.js';
 import { ZodValidationPipe } from '../../core/common/pipes/zod-validation.pipe.js';
+import { FlashcardsService } from '../ai/flashcards.service.js';
 import { SummaryService } from '../ai/summary.service.js';
 import { DocumentsService } from './documents.service.js';
 
@@ -36,6 +41,7 @@ export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
     private readonly summaryService: SummaryService,
+    private readonly flashcardsService: FlashcardsService,
   ) {}
 
   /**
@@ -99,6 +105,30 @@ export class DocumentsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<DocumentSummaryResponse> {
     return this.summaryService.summarizeDocument(user.userId, id);
+  }
+
+  /**
+   * Generate flashcards for a document using AI (or return cached flashcards).
+   */
+  @Post(':id/flashcards')
+  async generateFlashcards(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body(new ZodValidationPipe(generateFlashcardsRequestSchema.optional().default({ count: 10 })))
+    body: GenerateFlashcardsRequest,
+  ): Promise<FlashcardsResponse> {
+    return this.flashcardsService.generateFlashcards(user.userId, id, body.count);
+  }
+
+  /**
+   * Get previously generated flashcards for a document.
+   */
+  @Get(':id/flashcards')
+  async getFlashcards(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<FlashcardsResponse> {
+    return this.flashcardsService.getFlashcards(user.userId, id);
   }
 }
 
