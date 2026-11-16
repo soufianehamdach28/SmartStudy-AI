@@ -3,6 +3,7 @@ import { DocumentsScreen } from '../../features/documents/screens/DocumentsScree
 import { DocumentSummaryScreen } from '../../features/documents/screens/DocumentSummaryScreen';
 import { FlashcardsScreen } from '../../features/documents/screens/FlashcardsScreen';
 import { HomeScreen } from '../../features/home/screens/HomeScreen';
+import { QuizScreen } from '../../features/quiz/screens/QuizScreen';
 import type { AppStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -13,6 +14,7 @@ export function AppNavigator() {
       <Stack.Screen name="Documents" component={DocumentsScreen} />
       <Stack.Screen name="DocumentSummary" component={DocumentSummaryScreen} />
       <Stack.Screen name="Flashcards" component={FlashcardsScreen} />
+      <Stack.Screen name="Quiz" component={QuizScreen} />
       <Stack.Screen
         name="Home"
         component={HomeScreen}

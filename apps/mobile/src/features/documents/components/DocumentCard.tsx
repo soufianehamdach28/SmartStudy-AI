@@ -13,6 +13,7 @@ export interface DocumentCardProps {
   document: DocumentResponse;
   onPress?: () => void;
   onFlashcardsPress?: () => void;
+  onQuizPress?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
 }
@@ -63,6 +64,7 @@ export function DocumentCard({
   document,
   onPress,
   onFlashcardsPress,
+  onQuizPress,
   onDelete,
   isDeleting = false,
 }: DocumentCardProps) {
@@ -154,19 +156,38 @@ export function DocumentCard({
           </Text>
         ) : null}
 
-        {document.status === 'READY' && Boolean(onFlashcardsPress) && (
-          <TouchableOpacity
-            style={styles.actionChip}
-            onPress={(e) => {
-              e.stopPropagation();
-              onFlashcardsPress?.();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`Open flashcards for ${document.title}`}
-            testID={`flashcards-button-${document.id}`}
-          >
-            <Text style={styles.actionChipText}>🗂️ Flashcards</Text>
-          </TouchableOpacity>
+        {document.status === 'READY' && (
+          <View style={styles.actionsContainer}>
+            {Boolean(onFlashcardsPress) && (
+              <TouchableOpacity
+                style={styles.actionChip}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onFlashcardsPress?.();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Open flashcards for ${document.title}`}
+                testID={`flashcards-button-${document.id}`}
+              >
+                <Text style={styles.actionChipText}>🗂️ Flashcards</Text>
+              </TouchableOpacity>
+            )}
+
+            {Boolean(onQuizPress) && (
+              <TouchableOpacity
+                style={[styles.actionChip, styles.quizChip]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onQuizPress?.();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Open quiz for ${document.title}`}
+                testID={`quiz-button-${document.id}`}
+              >
+                <Text style={[styles.actionChipText, styles.quizChipText]}>🎯 Quiz</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -252,19 +273,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  actionChip: {
+  actionsContainer: {
     marginLeft: 'auto',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  actionChip: {
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#C7D2FE',
   },
   actionChipText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#4F46E5',
+  },
+  quizChip: {
+    backgroundColor: '#FDF2F8',
+    borderColor: '#FBCFE8',
+  },
+  quizChipText: {
+    color: '#DB2777',
   },
   errorText: {
     flex: 1,

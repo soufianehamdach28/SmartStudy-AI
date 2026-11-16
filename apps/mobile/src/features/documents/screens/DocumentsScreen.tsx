@@ -146,6 +146,14 @@ export function DocumentsScreen() {
                 });
               }
             }}
+            onQuizPress={() => {
+              if (item.status === 'READY') {
+                navigation.navigate('Quiz', {
+                  documentId: item.id,
+                  documentTitle: item.title,
+                });
+              }
+            }}
             onDelete={() => handleDelete(item.id)}
             isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
           />
