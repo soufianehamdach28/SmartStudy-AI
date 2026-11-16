@@ -4,6 +4,7 @@ import {
   type DocumentResponse,
   type DocumentSummaryResponse,
   type DocumentUploadResponse,
+  type FlashcardsResponse,
   type PaginatedDocumentsResponse,
 } from '@smartstudy/shared';
 import { apiClient } from '../../../shared/api/client';
@@ -78,6 +79,28 @@ export async function deleteDocument(id: string): Promise<void> {
  */
 export async function fetchDocumentSummary(id: string): Promise<DocumentSummaryResponse> {
   const response = await apiClient.post<DocumentSummaryResponse>(`/documents/${id}/summarize`);
+  return response.data;
+}
+
+/**
+ * Fetch previously generated flashcards for a document.
+ */
+export async function fetchFlashcards(id: string): Promise<FlashcardsResponse> {
+  const response = await apiClient.get<FlashcardsResponse>(`/documents/${id}/flashcards`);
+  return response.data;
+}
+
+/**
+ * Generate flashcards for a document using AI (or return cached flashcards).
+ */
+export async function generateFlashcards(
+  id: string,
+  count = 10,
+): Promise<FlashcardsResponse> {
+  const response = await apiClient.post<FlashcardsResponse>(
+    `/documents/${id}/flashcards`,
+    { count },
+  );
   return response.data;
 }
 

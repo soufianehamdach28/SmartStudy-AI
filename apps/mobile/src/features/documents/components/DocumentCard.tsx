@@ -12,6 +12,7 @@ import type { DocumentResponse, DocumentStatus } from '@smartstudy/shared';
 export interface DocumentCardProps {
   document: DocumentResponse;
   onPress?: () => void;
+  onFlashcardsPress?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
 }
@@ -61,6 +62,7 @@ function getStatusBadgeConfig(status: DocumentStatus): {
 export function DocumentCard({
   document,
   onPress,
+  onFlashcardsPress,
   onDelete,
   isDeleting = false,
 }: DocumentCardProps) {
@@ -151,6 +153,21 @@ export function DocumentCard({
             {document.errorMessage}
           </Text>
         ) : null}
+
+        {document.status === 'READY' && Boolean(onFlashcardsPress) && (
+          <TouchableOpacity
+            style={styles.actionChip}
+            onPress={(e) => {
+              e.stopPropagation();
+              onFlashcardsPress?.();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Open flashcards for ${document.title}`}
+            testID={`flashcards-button-${document.id}`}
+          >
+            <Text style={styles.actionChipText}>🗂️ Flashcards</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -234,6 +251,20 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  actionChip: {
+    marginLeft: 'auto',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  actionChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4F46E5',
   },
   errorText: {
     flex: 1,

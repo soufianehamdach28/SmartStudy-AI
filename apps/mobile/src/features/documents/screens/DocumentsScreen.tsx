@@ -138,6 +138,14 @@ export function DocumentsScreen() {
                 );
               }
             }}
+            onFlashcardsPress={() => {
+              if (item.status === 'READY') {
+                navigation.navigate('Flashcards', {
+                  documentId: item.id,
+                  documentTitle: item.title,
+                });
+              }
+            }}
             onDelete={() => handleDelete(item.id)}
             isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
           />

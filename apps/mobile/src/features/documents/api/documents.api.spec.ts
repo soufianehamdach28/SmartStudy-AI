@@ -4,6 +4,8 @@ import {
   fetchDocument,
   fetchDocuments,
   fetchDocumentSummary,
+  fetchFlashcards,
+  generateFlashcards,
   parseDocumentErrorMessage,
   uploadDocument,
 } from './documents.api';
@@ -130,6 +132,54 @@ describe('documents.api', () => {
 
       expect(apiClient.post).toHaveBeenCalledWith('/documents/doc-uuid-1/summarize');
       expect(result).toEqual(mockSummary);
+    });
+  });
+
+  describe('fetchFlashcards', () => {
+    it('calls GET /documents/:id/flashcards and returns flashcards response', async () => {
+      const mockResponse = {
+        documentId: 'doc-uuid-1',
+        flashcards: [
+          {
+            id: 'card-1',
+            documentId: 'doc-uuid-1',
+            front: 'Front text',
+            back: 'Back text',
+          },
+        ],
+      };
+
+      (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: mockResponse });
+
+      const result = await fetchFlashcards('doc-uuid-1');
+
+      expect(apiClient.get).toHaveBeenCalledWith('/documents/doc-uuid-1/flashcards');
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('generateFlashcards', () => {
+    it('calls POST /documents/:id/flashcards with count and returns flashcards response', async () => {
+      const mockResponse = {
+        documentId: 'doc-uuid-1',
+        flashcards: [
+          {
+            id: 'card-1',
+            documentId: 'doc-uuid-1',
+            front: 'What is Ohm’s law?',
+            back: 'V = I * R',
+          },
+        ],
+      };
+
+      (apiClient.post as jest.Mock).mockResolvedValueOnce({ data: mockResponse });
+
+      const result = await generateFlashcards('doc-uuid-1', 15);
+
+      expect(apiClient.post).toHaveBeenCalledWith('/documents/doc-uuid-1/flashcards', {
+        count: 15,
+      });
+      expect(result).toEqual(mockResponse);
     });
   });
 

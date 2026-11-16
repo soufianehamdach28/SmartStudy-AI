@@ -8,6 +8,7 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   Documents: undefined;
   DocumentSummary: { documentId: string; documentTitle: string };
+  Flashcards: { documentId: string; documentTitle: string };
   Home: undefined;
 };
 

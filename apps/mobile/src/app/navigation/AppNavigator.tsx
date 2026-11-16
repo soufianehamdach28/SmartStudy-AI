@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DocumentsScreen } from '../../features/documents/screens/DocumentsScreen';
 import { DocumentSummaryScreen } from '../../features/documents/screens/DocumentSummaryScreen';
+import { FlashcardsScreen } from '../../features/documents/screens/FlashcardsScreen';
 import { HomeScreen } from '../../features/home/screens/HomeScreen';
 import type { AppStackParamList } from './types';
 
@@ -11,6 +12,7 @@ export function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Documents" component={DocumentsScreen} />
       <Stack.Screen name="DocumentSummary" component={DocumentSummaryScreen} />
+      <Stack.Screen name="Flashcards" component={FlashcardsScreen} />
       <Stack.Screen
         name="Home"
         component={HomeScreen}
