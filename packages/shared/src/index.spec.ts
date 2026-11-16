@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   authResponseSchema,
+  citationSchema,
+  conversationDetailResponseSchema,
+  conversationSchema,
+  createConversationRequestSchema,
   documentChunkSchema,
   documentExtensionSchema,
   documentListQuerySchema,
@@ -12,16 +16,23 @@ import {
   flashcardsResponseSchema,
   generateFlashcardsRequestSchema,
   generateQuizRequestSchema,
+  listConversationsQuerySchema,
+  llmChatOutputSchema,
   llmFlashcardsOutputSchema,
   llmQuizOutputSchema,
   llmSummaryOutputSchema,
   loginRequestSchema,
+  messageRoleSchema,
+  messageSchema,
+  paginatedConversationsResponseSchema,
   paginatedDocumentsResponseSchema,
   quizAttemptResponseSchema,
   quizQuestionSchema,
   quizResponseSchema,
   refreshTokenRequestSchema,
   registerRequestSchema,
+  sendMessageRequestSchema,
+  sendMessageResponseSchema,
   submitQuizAttemptRequestSchema,
   usageKindSchema,
   usageQuotaResponseSchema,
@@ -378,5 +389,129 @@ describe('AI learning schemas', () => {
       monthlyRemaining: 285,
     });
     expect(quota.dailyRemaining).toBe(17);
+  });
+});
+
+describe('chat, conversation and citation schemas', () => {
+  const userId = '123e4567-e89b-12d3-a456-426614174000';
+  const docId = '223e4567-e89b-12d3-a456-426614174001';
+  const conversationId = '323e4567-e89b-12d3-a456-426614174002';
+  const messageId = '423e4567-e89b-12d3-a456-426614174003';
+  const assistantMsgId = '523e4567-e89b-12d3-a456-426614174004';
+  const chunkId = '623e4567-e89b-12d3-a456-426614174005';
+
+  it('validates citationSchema and rejects invalid chunkId or page', () => {
+    const valid = citationSchema.parse({
+      chunkId,
+      page: 4,
+      excerpt: 'Newton second law states F = ma.',
+    });
+    expect(valid.page).toBe(4);
+
+    expect(
+      citationSchema.safeParse({ chunkId: 'not-a-uuid', page: 1, excerpt: 'x' }).success,
+    ).toBe(false);
+    expect(
+      citationSchema.safeParse({ chunkId, page: 0, excerpt: 'x' }).success,
+    ).toBe(false);
+    expect(
+      citationSchema.safeParse({ chunkId, page: 1, excerpt: '' }).success,
+    ).toBe(false);
+  });
+
+  it('validates message roles, messageSchema, and llmChatOutputSchema defaults', () => {
+    expect(messageRoleSchema.safeParse('USER').success).toBe(true);
+    expect(messageRoleSchema.safeParse('ASSISTANT').success).toBe(true);
+    expect(messageRoleSchema.safeParse('SYSTEM').success).toBe(false);
+
+    const now = new Date().toISOString();
+    const userMsg = messageSchema.parse({
+      id: messageId,
+      conversationId,
+      role: 'USER',
+      content: 'What is F=ma?',
+      createdAt: now,
+    });
+    expect(userMsg.citations).toEqual([]);
+
+    const llmOut = llmChatOutputSchema.parse({
+      answer: 'Force equals mass times acceleration.',
+      citations: [{ chunkId, page: 2, excerpt: 'F = m * a' }],
+    });
+    expect(llmOut.citations).toHaveLength(1);
+
+    const llmDefaultCitations = llmChatOutputSchema.parse({
+      answer: 'Not found in the document.',
+    });
+    expect(llmDefaultCitations.citations).toEqual([]);
+  });
+
+  it('validates createConversationRequestSchema, sendMessageRequestSchema, and responses', () => {
+    const createReq = createConversationRequestSchema.parse({
+      documentId: docId,
+      title: '  Physics Chapter 2  ',
+    });
+    expect(createReq.title).toBe('Physics Chapter 2');
+
+    const createNoTitle = createConversationRequestSchema.parse({ documentId: docId });
+    expect(createNoTitle.title).toBeUndefined();
+
+    const msgReq = sendMessageRequestSchema.parse({ content: '  Explain inertia  ' });
+    expect(msgReq.content).toBe('Explain inertia');
+    expect(sendMessageRequestSchema.safeParse({ content: '   ' }).success).toBe(false);
+    expect(
+      sendMessageRequestSchema.safeParse({ content: 'a'.repeat(2001) }).success,
+    ).toBe(false);
+
+    const now = new Date().toISOString();
+    const conv = conversationSchema.parse({
+      id: conversationId,
+      userId,
+      documentId: docId,
+      title: 'Physics Chapter 2',
+      createdAt: now,
+    });
+
+    const userMessage = {
+      id: messageId,
+      conversationId,
+      role: 'USER' as const,
+      content: 'Explain inertia',
+      citations: [],
+      createdAt: now,
+    };
+    const assistantMessage = {
+      id: assistantMsgId,
+      conversationId,
+      role: 'ASSISTANT' as const,
+      content: 'Inertia is the resistance to change in motion.',
+      citations: [{ chunkId, page: 3, excerpt: 'Resistance to change in motion' }],
+      createdAt: now,
+    };
+
+    const detail = conversationDetailResponseSchema.parse({
+      ...conv,
+      messages: [userMessage, assistantMessage],
+    });
+    expect(detail.messages).toHaveLength(2);
+
+    const sendRes = sendMessageResponseSchema.parse({
+      userMessage,
+      assistantMessage,
+    });
+    expect(sendRes.assistantMessage.citations[0].page).toBe(3);
+
+    const query = listConversationsQuerySchema.parse({});
+    expect(query.page).toBe(1);
+    expect(query.limit).toBe(20);
+
+    const paginated = paginatedConversationsResponseSchema.parse({
+      items: [conv],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    });
+    expect(paginated.items).toHaveLength(1);
   });
 });

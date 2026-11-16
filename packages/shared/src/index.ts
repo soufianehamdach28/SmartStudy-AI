@@ -332,3 +332,92 @@ export const usageQuotaResponseSchema = z.object({
   monthlyRemaining: z.number().int().nonnegative(),
 });
 export type UsageQuotaResponse = z.infer<typeof usageQuotaResponseSchema>;
+
+// ─── Chat, Conversations & Citations ────────────────────────────────────────
+
+/** Roles in a document conversation. */
+export const MESSAGE_ROLES = ['USER', 'ASSISTANT'] as const;
+export const messageRoleSchema = z.enum(MESSAGE_ROLES);
+export type MessageRole = z.infer<typeof messageRoleSchema>;
+
+/** Source citation referencing a real document chunk and page. */
+export const citationSchema = z.object({
+  chunkId: z.string().uuid(),
+  page: z.number().int().positive(),
+  excerpt: z.string().min(1),
+});
+export type Citation = z.infer<typeof citationSchema>;
+
+/** Individual chat message representation returned over the wire. */
+export const messageSchema = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  role: messageRoleSchema,
+  content: z.string().min(1),
+  citations: z.array(citationSchema).default([]),
+  createdAt: z.string().datetime(),
+});
+export type Message = z.infer<typeof messageSchema>;
+
+/** Structured chat JSON output expected from the LLM. */
+export const llmChatOutputSchema = z.object({
+  answer: z.string().min(1),
+  citations: z.array(citationSchema).default([]),
+});
+export type LlmChatOutput = z.infer<typeof llmChatOutputSchema>;
+
+/** Conversation summary item representation. */
+export const conversationSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  title: z.string().min(1),
+  createdAt: z.string().datetime(),
+});
+export type Conversation = z.infer<typeof conversationSchema>;
+
+/** Conversation with its full ordered message history. */
+export const conversationDetailResponseSchema = conversationSchema.extend({
+  messages: z.array(messageSchema),
+});
+export type ConversationDetailResponse = z.infer<typeof conversationDetailResponseSchema>;
+
+/** Request payload for POST /api/conversations. */
+export const createConversationRequestSchema = z.object({
+  documentId: z.string().uuid(),
+  title: z.string().trim().min(1).max(120).optional(),
+});
+export type CreateConversationRequest = z.infer<typeof createConversationRequestSchema>;
+
+/** Request payload for POST /api/conversations/:id/messages. */
+export const sendMessageRequestSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
+export type SendMessageRequest = z.infer<typeof sendMessageRequestSchema>;
+
+/** Response returned by POST /api/conversations/:id/messages. */
+export const sendMessageResponseSchema = z.object({
+  userMessage: messageSchema,
+  assistantMessage: messageSchema,
+});
+export type SendMessageResponse = z.infer<typeof sendMessageResponseSchema>;
+
+/** Query parameters for GET /api/conversations. */
+export const listConversationsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  documentId: z.string().uuid().optional(),
+});
+export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
+
+/** Paginated list of conversations returned by GET /api/conversations. */
+export const paginatedConversationsResponseSchema = z.object({
+  items: z.array(conversationSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  limit: z.number().int().positive(),
+  totalPages: z.number().int().nonnegative(),
+});
+export type PaginatedConversationsResponse = z.infer<
+  typeof paginatedConversationsResponseSchema
+>;
