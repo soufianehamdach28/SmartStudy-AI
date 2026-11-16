@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CurrentUserPayload } from '../../core/common/decorators/current-user.decorator.js';
 import { UsageController } from './usage.controller.js';
 import type { UsageService } from './usage.service.js';
 
@@ -8,7 +9,11 @@ describe('UsageController', () => {
     getUsageQuota: ReturnType<typeof vi.fn>;
   };
 
-  const userId = '123e4567-e89b-12d3-a456-426614174000';
+  const user: CurrentUserPayload = {
+    userId: '123e4567-e89b-12d3-a456-426614174000',
+    email: 'student@example.com',
+    role: 'STUDENT',
+  };
 
   beforeEach(() => {
     usageServiceMock = {
@@ -30,9 +35,9 @@ describe('UsageController', () => {
 
     usageServiceMock.getUsageQuota.mockResolvedValue(mockQuota);
 
-    const result = await controller.getUsage(userId);
+    const result = await controller.getUsage(user);
 
-    expect(usageServiceMock.getUsageQuota).toHaveBeenCalledWith(userId);
+    expect(usageServiceMock.getUsageQuota).toHaveBeenCalledWith(user.userId);
     expect(result).toEqual(mockQuota);
   });
 });
