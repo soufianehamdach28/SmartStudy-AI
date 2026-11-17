@@ -23,6 +23,7 @@ import {
 } from '../hooks/useChat';
 import { ChatInputBar } from '../components/ChatInputBar';
 import { MessageBubble } from '../components/MessageBubble';
+import { SourceExcerptModal } from '../components/SourceExcerptModal';
 
 export type ChatScreenProps = NativeStackScreenProps<AppStackParamList, 'Chat'>;
 
@@ -32,6 +33,9 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   const [conversationId, setConversationId] = useState<string | undefined>(
     initialConversationId,
+  );
+  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(
+    null,
   );
 
   const flatListRef = useRef<FlatList<Message>>(null);
@@ -83,11 +87,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   };
 
   const handleCitationPress = (citation: Citation) => {
-    Alert.alert(
-      `Source: Page ${citation.page}`,
-      citation.excerpt,
-      [{ text: 'Close', style: 'cancel' }],
-    );
+    setSelectedCitation(citation);
   };
 
   const renderContent = () => {
@@ -177,6 +177,14 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           createConversationMutation.isPending ||
           sendMessageMutation.isPending
         }
+      />
+
+      {/* Source Excerpt Modal */}
+      <SourceExcerptModal
+        visible={Boolean(selectedCitation)}
+        citation={selectedCitation}
+        documentTitle={documentTitle}
+        onClose={() => setSelectedCitation(null)}
       />
     </KeyboardAvoidingView>
   );

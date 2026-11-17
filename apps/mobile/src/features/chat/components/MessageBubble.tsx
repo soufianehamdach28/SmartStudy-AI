@@ -2,11 +2,11 @@ import React from 'react';
 import {
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import type { Citation, Message } from '@smartstudy/shared';
 import { MarkdownView } from '../../../shared/components/MarkdownView';
+import { CitationPill } from './CitationPill';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -63,19 +63,11 @@ export function MessageBubble({
             <Text style={styles.citationsLabel}>Sources:</Text>
             <View style={styles.pillsRow}>
               {message.citations.map((citation, idx) => (
-                <TouchableOpacity
+                <CitationPill
                   key={`${citation.chunkId}-${idx}`}
-                  style={styles.citationPill}
-                  onPress={() => onCitationPress?.(citation)}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Citation: Page ${citation.page}`}
-                  testID={`citation-pill-${citation.chunkId}`}
-                >
-                  <Text style={styles.citationPillText}>
-                    {`📄 Page ${citation.page}`}
-                  </Text>
-                </TouchableOpacity>
+                  citation={citation}
+                  onPress={onCitationPress}
+                />
               ))}
             </View>
           </View>
@@ -154,19 +146,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-  },
-  citationPill: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  citationPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4338CA',
   },
   timestamp: {
     fontSize: 10,

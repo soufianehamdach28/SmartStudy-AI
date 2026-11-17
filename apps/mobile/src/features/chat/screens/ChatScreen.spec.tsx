@@ -191,4 +191,59 @@ describe('ChatScreen', () => {
 
     expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
   });
+
+  it('opens SourceExcerptModal when a citation pill is pressed', () => {
+    (useConversation as jest.Mock).mockReturnValue({
+      data: {
+        id: 'conv-123',
+        userId: 'u-1',
+        documentId: 'doc-123',
+        title: 'Cell Biology',
+        createdAt: '2026-11-17T02:00:00.000Z',
+        messages: [
+          {
+            id: 'm-2',
+            conversationId: 'conv-123',
+            role: 'ASSISTANT',
+            content: 'Mitochondria produce ATP.',
+            citations: [
+              {
+                chunkId: 'chunk-1',
+                page: 2,
+                excerpt: 'Mitochondria produce ATP.',
+              },
+            ],
+            createdAt: '2026-11-17T02:01:05.000Z',
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <ChatScreen
+          navigation={mockNavigation as any}
+          route={mockRoute as any}
+        />,
+      );
+    });
+
+    const root = renderer!.root;
+    const citationPill = root.findByProps({
+      testID: 'citation-pill-chunk-1',
+    });
+
+    act(() => {
+      citationPill.props.onPress();
+    });
+
+    const excerptText = root.findByProps({
+      testID: 'source-excerpt-text',
+    });
+    expect(excerptText.props.children).toContain('Mitochondria produce ATP.');
+  });
 });
