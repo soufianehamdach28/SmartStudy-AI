@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { LlmModule } from '../../core/llm/llm.module.js';
 import { PrismaModule } from '../../core/prisma/prisma.module.js';
 import { UsageModule } from '../usage/usage.module.js';
+import { ChatPromptBuilder } from './chat/chat-prompt.builder.js';
 import { FlashcardsService } from './flashcards.service.js';
 import { QuizService } from './quiz.service.js';
 import { QuizzesController } from './quizzes.controller.js';
@@ -16,12 +17,14 @@ import { SummaryService } from './summary.service.js';
     FlashcardsService,
     QuizService,
     PostgresRetrieverService,
+    ChatPromptBuilder,
   ],
   exports: [
     SummaryService,
     FlashcardsService,
     QuizService,
     PostgresRetrieverService,
+    ChatPromptBuilder,
   ],
 })
 export class AiModule {}
