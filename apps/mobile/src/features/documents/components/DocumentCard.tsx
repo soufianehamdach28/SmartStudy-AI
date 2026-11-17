@@ -14,6 +14,7 @@ export interface DocumentCardProps {
   onPress?: () => void;
   onFlashcardsPress?: () => void;
   onQuizPress?: () => void;
+  onChatPress?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
 }
@@ -65,6 +66,7 @@ export function DocumentCard({
   onPress,
   onFlashcardsPress,
   onQuizPress,
+  onChatPress,
   onDelete,
   isDeleting = false,
 }: DocumentCardProps) {
@@ -187,6 +189,21 @@ export function DocumentCard({
                 <Text style={[styles.actionChipText, styles.quizChipText]}>🎯 Quiz</Text>
               </TouchableOpacity>
             )}
+
+            {Boolean(onChatPress) && (
+              <TouchableOpacity
+                style={[styles.actionChip, styles.chatChip]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onChatPress?.();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Open chat for ${document.title}`}
+                testID={`chat-button-${document.id}`}
+              >
+                <Text style={[styles.actionChipText, styles.chatChipText]}>💬 Chat</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -297,6 +314,13 @@ const styles = StyleSheet.create({
   },
   quizChipText: {
     color: '#DB2777',
+  },
+  chatChip: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  chatChipText: {
+    color: '#16A34A',
   },
   errorText: {
     flex: 1,

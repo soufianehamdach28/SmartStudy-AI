@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ChatScreen } from '../../features/chat/screens/ChatScreen';
 import { DocumentsScreen } from '../../features/documents/screens/DocumentsScreen';
 import { DocumentSummaryScreen } from '../../features/documents/screens/DocumentSummaryScreen';
 import { FlashcardsScreen } from '../../features/documents/screens/FlashcardsScreen';
@@ -15,6 +16,7 @@ export function AppNavigator() {
       <Stack.Screen name="DocumentSummary" component={DocumentSummaryScreen} />
       <Stack.Screen name="Flashcards" component={FlashcardsScreen} />
       <Stack.Screen name="Quiz" component={QuizScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen
         name="Home"
         component={HomeScreen}

@@ -10,6 +10,7 @@ export type AppStackParamList = {
   DocumentSummary: { documentId: string; documentTitle: string };
   Flashcards: { documentId: string; documentTitle: string };
   Quiz: { documentId: string; documentTitle: string };
+  Chat: { documentId: string; documentTitle: string; conversationId?: string };
   Home: undefined;
 };
 
