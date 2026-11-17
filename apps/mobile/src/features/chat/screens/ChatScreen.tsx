@@ -21,7 +21,9 @@ import {
   useCreateConversation,
   useSendMessage,
 } from '../hooks/useChat';
+import { useFavoritesStore } from '../../../shared/store/favorites.store';
 import { ChatInputBar } from '../components/ChatInputBar';
+import { ConversationHistoryModal } from '../components/ConversationHistoryModal';
 import { MessageBubble } from '../components/MessageBubble';
 import { SourceExcerptModal } from '../components/SourceExcerptModal';
 
@@ -37,10 +39,28 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(
     null,
   );
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
   const flatListRef = useRef<FlatList<Message>>(null);
 
+  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+  const isFav = conversationId
+    ? isFavorite('CONVERSATION', conversationId)
+    : false;
+
   const createConversationMutation = useCreateConversation();
+
+  const handleCreateNewChat = async () => {
+    try {
+      const newConv = await createConversationMutation.mutateAsync({
+        documentId,
+      });
+      setConversationId(newConv.id);
+    } catch (err) {
+      Alert.alert('Unable to Create Chat', parseChatErrorMessage(err));
+    }
+  };
 
   // If no conversationId was passed in route params, initialize one on mount
   useEffect(() => {
@@ -156,6 +176,35 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           </Text>
           <Text style={styles.headerSubtitle}>Document Chat</Text>
         </View>
+
+        <View style={styles.headerActions}>
+          {Boolean(conversationId) && (
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() =>
+                conversationId &&
+                toggleFavorite('CONVERSATION', conversationId)
+              }
+              accessibilityRole="button"
+              accessibilityLabel={
+                isFav ? 'Unstar conversation' : 'Star conversation'
+              }
+              testID="chat-favorite-button"
+            >
+              <Text style={styles.starIcon}>{isFav ? '★' : '☆'}</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.historyButton}
+            onPress={() => setHistoryModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open chat history"
+            testID="chat-history-button"
+          >
+            <Text style={styles.historyButtonText}>🕒 History</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Mandatory AI Disclaimer Banner */}
@@ -185,6 +234,16 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         citation={selectedCitation}
         documentTitle={documentTitle}
         onClose={() => setSelectedCitation(null)}
+      />
+
+      {/* Conversation History Modal */}
+      <ConversationHistoryModal
+        visible={historyModalVisible}
+        documentId={documentId}
+        activeConversationId={conversationId}
+        onSelectConversation={(id) => setConversationId(id)}
+        onNewChat={handleCreateNewChat}
+        onClose={() => setHistoryModalVisible(false)}
       />
     </KeyboardAvoidingView>
   );
@@ -223,6 +282,32 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     color: '#64748B',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 8,
+  },
+  headerActionButton: {
+    padding: 6,
+  },
+  starIcon: {
+    fontSize: 20,
+    color: '#EAB308',
+  },
+  historyButton: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  historyButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4338CA',
   },
   disclaimerBanner: {
     backgroundColor: '#FEF3C7',

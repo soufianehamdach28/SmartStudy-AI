@@ -14,6 +14,7 @@ import { ErrorView } from '../../../shared/components/ErrorView';
 import { LoadingView } from '../../../shared/components/LoadingView';
 import { parseDocumentErrorMessage } from '../api/documents.api';
 import { FlashcardViewer } from '../components/FlashcardViewer';
+import { useFavoritesStore } from '../../../shared/store/favorites.store';
 import {
   useFlashcards,
   useRegenerateFlashcards,
@@ -31,10 +32,21 @@ export function FlashcardsScreen({ route, navigation }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [filterFavoritesOnly, setFilterFavoritesOnly] = useState(false);
 
-  const flashcards = data?.flashcards ?? [];
+  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+
+  const allFlashcards = data?.flashcards ?? [];
+  const flashcards = filterFavoritesOnly
+    ? allFlashcards.filter((card) => isFavorite('FLASHCARD', card.id))
+    : allFlashcards;
+
   const totalCards = flashcards.length;
   const currentCard = flashcards[currentIndex];
+  const isCurrentCardFavorite = currentCard
+    ? isFavorite('FLASHCARD', currentCard.id)
+    : false;
 
   const handleNext = () => {
     if (currentIndex < totalCards - 1) {
@@ -119,12 +131,26 @@ export function FlashcardsScreen({ route, navigation }: Props) {
           onRetry={refetch}
         />
       ) : totalCards === 0 ? (
-        <EmptyView
-          title="No flashcards available"
-          description="We couldn't generate flashcards for this document."
-          actionLabel="Generate Now"
-          onAction={handleRegenerate}
-        />
+        filterFavoritesOnly ? (
+          <EmptyView
+            title="No favorite flashcards"
+            description="You haven't starred any flashcards yet. Tap the star icon on any card to study it here."
+            actionLabel="Show All Cards"
+            onAction={() => {
+              setFilterFavoritesOnly(false);
+              setCurrentIndex(0);
+              setIsFlipped(false);
+              setIsCompleted(false);
+            }}
+          />
+        ) : (
+          <EmptyView
+            title="No flashcards available"
+            description="We couldn't generate flashcards for this document."
+            actionLabel="Generate Now"
+            onAction={handleRegenerate}
+          />
+        )
       ) : isCompleted ? (
         /* Completion View */
         <View style={styles.completedContainer} testID="flashcards-completed-view">
@@ -160,10 +186,57 @@ export function FlashcardsScreen({ route, navigation }: Props) {
           {/* Progress Header */}
           <View style={styles.progressHeader}>
             <View style={styles.progressRow}>
-              <Text style={styles.progressCountText}>
-                Card {currentIndex + 1} of {totalCards}
-              </Text>
-              <Text style={styles.progressPercentText}>{progressPercent}%</Text>
+              <View style={styles.cardCountGroup}>
+                <Text style={styles.progressCountText}>
+                  Card {currentIndex + 1} of {totalCards}
+                </Text>
+                {Boolean(currentCard) && (
+                  <TouchableOpacity
+                    style={styles.cardFavoriteButton}
+                    onPress={() =>
+                      currentCard &&
+                      toggleFavorite('FLASHCARD', currentCard.id)
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isCurrentCardFavorite
+                        ? 'Remove from favorites'
+                        : 'Add to favorites'
+                    }
+                    testID="favorite-flashcard-button"
+                  >
+                    <Text style={styles.cardStarIcon}>
+                      {isCurrentCardFavorite ? '★' : '☆'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.filterGroup}>
+                <TouchableOpacity
+                  style={[
+                    styles.filterChip,
+                    filterFavoritesOnly && styles.filterChipActive,
+                  ]}
+                  onPress={() => {
+                    setFilterFavoritesOnly(!filterFavoritesOnly);
+                    setCurrentIndex(0);
+                    setIsFlipped(false);
+                    setIsCompleted(false);
+                  }}
+                  testID="filter-favorites-flashcards"
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filterFavoritesOnly && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {filterFavoritesOnly ? '★ Starred' : '☆ Filter Starred'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.progressPercentText}>{progressPercent}%</Text>
+              </View>
             </View>
             <View style={styles.progressBarTrack}>
               <View
@@ -306,6 +379,43 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+  },
+  cardCountGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardFavoriteButton: {
+    padding: 2,
+  },
+  cardStarIcon: {
+    fontSize: 18,
+    color: '#EAB308',
+  },
+  filterGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterChip: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  filterChipActive: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  filterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  filterChipTextActive: {
+    color: '#B45309',
   },
   progressCountText: {
     fontSize: 14,

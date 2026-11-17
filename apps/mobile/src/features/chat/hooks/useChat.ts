@@ -3,11 +3,14 @@ import type {
   Conversation,
   ConversationDetailResponse,
   CreateConversationRequest,
+  PaginatedConversationsResponse,
   SendMessageResponse,
 } from '@smartstudy/shared';
 import {
   createConversation,
+  deleteConversation,
   fetchConversation,
+  fetchConversations,
   sendMessage,
 } from '../api/chat.api';
 
@@ -18,6 +21,17 @@ export const CHAT_QUERY_KEYS = {
   detail: (conversationId: string) =>
     ['conversations', 'detail', conversationId] as const,
 };
+
+/**
+ * Fetches conversations for a document.
+ */
+export function useDocumentConversations(documentId?: string) {
+  return useQuery<PaginatedConversationsResponse>({
+    queryKey: CHAT_QUERY_KEYS.byDocument(documentId ?? ''),
+    queryFn: () => fetchConversations(documentId),
+    enabled: Boolean(documentId),
+  });
+}
 
 /**
  * Fetches a conversation and its messages.
@@ -75,6 +89,23 @@ export function useSendMessage(conversationId: string) {
           };
         },
       );
+    },
+  });
+}
+
+/**
+ * Mutation to delete a conversation session.
+ */
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, unknown, string>({
+    mutationFn: (conversationId: string) => deleteConversation(conversationId),
+    onSuccess: (_, conversationId) => {
+      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.all });
+      queryClient.removeQueries({
+        queryKey: CHAT_QUERY_KEYS.detail(conversationId),
+      });
     },
   });
 }

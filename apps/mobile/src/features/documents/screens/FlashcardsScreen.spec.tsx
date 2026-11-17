@@ -5,6 +5,7 @@ import { FlashcardsScreen } from './FlashcardsScreen';
 import { LoadingView } from '../../../shared/components/LoadingView';
 import { ErrorView } from '../../../shared/components/ErrorView';
 import { FlashcardViewer } from '../components/FlashcardViewer';
+import { useFavoritesStore } from '../../../shared/store/favorites.store';
 import {
   useFlashcards,
   useRegenerateFlashcards,
@@ -239,5 +240,54 @@ describe('FlashcardsScreen', () => {
     });
 
     expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('toggles favorite on current flashcard and filters by favorites only', async () => {
+    useFavoritesStore.getState().clearFavorites();
+
+    (useFlashcards as jest.Mock).mockReturnValue({
+      data: { documentId: 'doc-123', flashcards: mockCards },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+      isRefetching: false,
+    });
+
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <FlashcardsScreen
+          navigation={mockNavigation as any}
+          route={mockRoute as any}
+        />,
+      );
+    });
+
+    const root = renderer!.root;
+
+    // Star the first card (card-1)
+    const starBtn = root.findByProps({ testID: 'favorite-flashcard-button' });
+    expect(
+      useFavoritesStore.getState().isFavorite('FLASHCARD', 'card-1'),
+    ).toBe(false);
+
+    await act(async () => {
+      starBtn.props.onPress();
+    });
+
+    expect(
+      useFavoritesStore.getState().isFavorite('FLASHCARD', 'card-1'),
+    ).toBe(true);
+
+    // Filter to favorites only
+    const filterChip = root.findByProps({
+      testID: 'filter-favorites-flashcards',
+    });
+    await act(async () => {
+      filterChip.props.onPress();
+    });
+
+    const viewer = root.findByType(FlashcardViewer);
+    expect(viewer.props.card.id).toBe('card-1');
   });
 });

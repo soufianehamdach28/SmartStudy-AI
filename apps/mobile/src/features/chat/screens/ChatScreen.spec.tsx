@@ -8,12 +8,17 @@ import { ChatScreen } from './ChatScreen';
 import {
   useConversation,
   useCreateConversation,
+  useDeleteConversation,
+  useDocumentConversations,
   useSendMessage,
 } from '../hooks/useChat';
+import { useFavoritesStore } from '../../../shared/store/favorites.store';
 
 jest.mock('../hooks/useChat', () => ({
   useConversation: jest.fn(),
   useCreateConversation: jest.fn(),
+  useDeleteConversation: jest.fn(),
+  useDocumentConversations: jest.fn(),
   useSendMessage: jest.fn(),
 }));
 
@@ -45,10 +50,19 @@ describe('ChatScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useFavoritesStore.getState().clearFavorites();
     (useCreateConversation as jest.Mock).mockReturnValue(
       mockCreateConversation,
     );
     (useSendMessage as jest.Mock).mockReturnValue(mockSendMessage);
+    (useDocumentConversations as jest.Mock).mockReturnValue({
+      data: { items: [], total: 0 },
+      isLoading: false,
+    });
+    (useDeleteConversation as jest.Mock).mockReturnValue({
+      mutateAsync: jest.fn(),
+      isPending: false,
+    });
   });
 
   it('renders loading state when conversation is loading', () => {
@@ -245,5 +259,80 @@ describe('ChatScreen', () => {
       testID: 'source-excerpt-text',
     });
     expect(excerptText.props.children).toContain('Mitochondria produce ATP.');
+  });
+
+  it('toggles favorite on the active conversation when star button is pressed', () => {
+    (useConversation as jest.Mock).mockReturnValue({
+      data: {
+        id: 'conv-123',
+        userId: 'u-1',
+        documentId: 'doc-123',
+        title: 'Cell Biology',
+        createdAt: '2026-11-17T02:00:00.000Z',
+        messages: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <ChatScreen
+          navigation={mockNavigation as any}
+          route={mockRoute as any}
+        />,
+      );
+    });
+
+    const root = renderer!.root;
+    const favBtn = root.findByProps({ testID: 'chat-favorite-button' });
+
+    expect(
+      useFavoritesStore.getState().isFavorite('CONVERSATION', 'conv-123'),
+    ).toBe(false);
+
+    act(() => {
+      favBtn.props.onPress();
+    });
+
+    expect(
+      useFavoritesStore.getState().isFavorite('CONVERSATION', 'conv-123'),
+    ).toBe(true);
+  });
+
+  it('opens conversation history modal when history button is pressed', () => {
+    (useConversation as jest.Mock).mockReturnValue({
+      data: {
+        id: 'conv-123',
+        messages: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <ChatScreen
+          navigation={mockNavigation as any}
+          route={mockRoute as any}
+        />,
+      );
+    });
+
+    const root = renderer!.root;
+    const historyBtn = root.findByProps({ testID: 'chat-history-button' });
+
+    act(() => {
+      historyBtn.props.onPress();
+    });
+
+    const historyModal = root.findByProps({
+      testID: 'conversation-history-modal',
+    });
+    expect(historyModal.props.visible).toBe(true);
   });
 });
