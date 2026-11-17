@@ -127,6 +127,57 @@ describe('GeminiLlmService', () => {
     expect(genConfig.responseMimeType).toBe('application/json');
   });
 
+  it('retries on HTTP 503 high demand spike and succeeds upon retry', async () => {
+    vi.useFakeTimers();
+
+    const mock503Response = {
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+      json: async () => ({
+        error: {
+          code: 503,
+          message: 'This model is currently experiencing high demand.',
+          status: 'UNAVAILABLE',
+        },
+      }),
+    } as Response;
+
+    const mockSuccessResponse = {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [
+          {
+            content: { parts: [{ text: 'Calculus answer' }] },
+            finishReason: 'STOP',
+          },
+        ],
+        usageMetadata: {
+          promptTokenCount: 10,
+          candidatesTokenCount: 5,
+          totalTokenCount: 15,
+        },
+      }),
+    } as Response;
+
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(mock503Response)
+      .mockResolvedValueOnce(mockSuccessResponse);
+
+    const service = new GeminiLlmService(mockConfigService);
+    const promise = service.generateText({ system: '', prompt: 'hello' });
+
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    expect(result.text).toBe('Calculus answer');
+
+    vi.useRealTimers();
+  });
+
   it('maps HTTP 429 quota exhaustion to LlmUnavailableException', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,

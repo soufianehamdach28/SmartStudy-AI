@@ -303,6 +303,27 @@ describe('AI learning schemas', () => {
     });
     expect(parsed.questions[0]?.correctIndex).toBe(1);
 
+    // Resiliently handles top-level array output from LLMs
+    const fromArray = llmQuizOutputSchema.parse([validQuestion]);
+    expect(fromArray.title).toBe('Quiz');
+    expect(fromArray.questions).toHaveLength(1);
+
+    // Resiliently normalizes "question" field to "prompt"
+    const fromAltField = llmQuizOutputSchema.parse({
+      title: 'Alt Quiz',
+      questions: [
+        {
+          question: 'Which organelle produces ATP?',
+          options: ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi'],
+          correctIndex: 1,
+          explanation: 'Mitochondria are the powerhouse of the cell.',
+        },
+      ],
+    });
+    expect(fromAltField.questions[0]?.prompt).toBe(
+      'Which organelle produces ATP?',
+    );
+
     // Rejects wrong number of options
     expect(
       llmQuizOutputSchema.safeParse({

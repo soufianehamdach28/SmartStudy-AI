@@ -104,7 +104,19 @@ Strict rules:
 - Exactly one option is correct: specify "correctIndex" as an integer 0, 1, 2, or 3.
 - Provide a clear, educational "explanation" for why the correct option is right.
 - Whenever possible, set "sourceChunkId" to the UUID of the chunk containing the facts supporting the question, exactly matching one of the provided [Chunk ID: ...] values. If no chunk directly matches, return null.
-- Output MUST strictly conform to the expected JSON schema.`;
+- Output MUST be a valid JSON object with the exact structure:
+{
+  "title": "${requestedTitle}",
+  "questions": [
+    {
+      "prompt": "Question text here?",
+      "options": ["Option 0", "Option 1", "Option 2", "Option 3"],
+      "correctIndex": 0,
+      "explanation": "Why this option is correct",
+      "sourceChunkId": "<UUID of chunk or null>"
+    }
+  ]
+}`;
 
     const userPrompt = `Document title: "${document.title}"
 Suggested quiz title: "${requestedTitle}"

@@ -95,90 +95,115 @@ export class GeminiLlmService implements LlmDriver {
     }
 
     const startTime = Date.now();
-    let response: Response;
+    const maxRetries = 2;
 
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (err: unknown) {
-      const error = err as Error;
-      if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        this.logger.log(
+          `Retrying Google Gemini request (attempt ${attempt}/${maxRetries}) after 503 high-demand spike...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+      }
+
+      let response: Response;
+
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+          throw new LlmUnavailableException(
+            `Google Gemini request timed out after ${timeoutMs}ms`,
+            { provider: this.providerName, model, timeoutMs },
+          );
+        }
         throw new LlmUnavailableException(
-          `Google Gemini request timed out after ${timeoutMs}ms`,
-          { provider: this.providerName, model, timeoutMs },
+          `Failed to reach Google Gemini API: ${error.message}`,
+          { provider: this.providerName, model },
         );
       }
-      throw new LlmUnavailableException(
-        `Failed to reach Google Gemini API: ${error.message}`,
-        { provider: this.providerName, model },
-      );
+
+      let data: GeminiApiResponse;
+
+      try {
+        data = (await response.json()) as GeminiApiResponse;
+      } catch {
+        throw new LlmUnavailableException(
+          `Google Gemini returned non-JSON response with HTTP status ${response.status}`,
+          { provider: this.providerName, status: response.status },
+        );
+      }
+
+      if (!response.ok) {
+        // If Gemini is experiencing temporary high demand (HTTP 503), retry before throwing
+        if (response.status === 503 && attempt < maxRetries) {
+          this.logger.warn(
+            `Gemini API returned HTTP 503 (high demand). Backing off before retry...`,
+          );
+          continue;
+        }
+
+        const errorDetails = data.error?.message || response.statusText;
+        const status = data.error?.code || response.status;
+        this.logger.warn(
+          `Gemini API error (HTTP ${response.status}): ${errorDetails}`,
+        );
+
+        throw new LlmUnavailableException(
+          `Google Gemini error (${status}): ${errorDetails}`,
+          {
+            provider: this.providerName,
+            model,
+            httpStatus: response.status,
+            geminiStatus: data.error?.status,
+          },
+        );
+      }
+
+      const candidate = data.candidates?.[0];
+      const textPart = candidate?.content?.parts?.[0]?.text;
+
+      if (textPart === undefined || textPart === null) {
+        const finishReason = candidate?.finishReason || 'UNKNOWN';
+        throw new LlmUnavailableException(
+          `Google Gemini returned no text content (finishReason: ${finishReason})`,
+          { provider: this.providerName, model, finishReason },
+        );
+      }
+
+      const inputTokens = data.usageMetadata?.promptTokenCount ?? 0;
+      const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
+      const totalTokens =
+        data.usageMetadata?.totalTokenCount ?? inputTokens + outputTokens;
+
+      const usage: LlmTokenUsage = {
+        inputTokens,
+        outputTokens,
+        totalTokens,
+      };
+
+      const latencyMs = Date.now() - startTime;
+
+      return {
+        text: textPart,
+        data: textPart,
+        usage,
+        model,
+        provider: this.providerName,
+        latencyMs,
+      };
     }
 
-    const latencyMs = Date.now() - startTime;
-    let data: GeminiApiResponse;
-
-    try {
-      data = (await response.json()) as GeminiApiResponse;
-    } catch {
-      throw new LlmUnavailableException(
-        `Google Gemini returned non-JSON response with HTTP status ${response.status}`,
-        { provider: this.providerName, status: response.status },
-      );
-    }
-
-    if (!response.ok) {
-      const errorDetails = data.error?.message || response.statusText;
-      const status = data.error?.code || response.status;
-      this.logger.warn(
-        `Gemini API error (HTTP ${response.status}): ${errorDetails}`,
-      );
-
-      throw new LlmUnavailableException(
-        `Google Gemini error (${status}): ${errorDetails}`,
-        {
-          provider: this.providerName,
-          model,
-          httpStatus: response.status,
-          geminiStatus: data.error?.status,
-        },
-      );
-    }
-
-    const candidate = data.candidates?.[0];
-    const textPart = candidate?.content?.parts?.[0]?.text;
-
-    if (textPart === undefined || textPart === null) {
-      const finishReason = candidate?.finishReason || 'UNKNOWN';
-      throw new LlmUnavailableException(
-        `Google Gemini returned no text content (finishReason: ${finishReason})`,
-        { provider: this.providerName, model, finishReason },
-      );
-    }
-
-    const inputTokens = data.usageMetadata?.promptTokenCount ?? 0;
-    const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
-    const totalTokens =
-      data.usageMetadata?.totalTokenCount ?? inputTokens + outputTokens;
-
-    const usage: LlmTokenUsage = {
-      inputTokens,
-      outputTokens,
-      totalTokens,
-    };
-
-    return {
-      text: textPart,
-      data: textPart,
-      usage,
-      model,
-      provider: this.providerName,
-      latencyMs,
-    };
+    throw new LlmUnavailableException(
+      'Google Gemini failed after maximum retry attempts.',
+      { provider: this.providerName, model },
+    );
   }
 }

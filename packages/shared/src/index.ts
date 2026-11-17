@@ -243,20 +243,43 @@ export const generateQuizRequestSchema = z.object({
 export type GenerateQuizRequest = z.infer<typeof generateQuizRequestSchema>;
 
 /** Individual quiz question shape expected from the LLM. */
-export const llmQuizQuestionItemSchema = z.object({
-  prompt: z.string().min(1),
-  options: z.array(z.string().min(1)).length(4),
-  correctIndex: z.number().int().min(0).max(3),
-  explanation: z.string().min(1),
-  sourceChunkId: z.string().uuid().nullable().optional(),
-});
+export const llmQuizQuestionItemSchema = z.preprocess(
+  (val: unknown) => {
+    if (val && typeof val === 'object') {
+      const obj = val as Record<string, unknown>;
+      return {
+        ...obj,
+        prompt: obj.prompt ?? obj.question,
+      };
+    }
+    return val;
+  },
+  z.object({
+    prompt: z.string().min(1),
+    options: z.array(z.string().min(1)).length(4),
+    correctIndex: z.number().int().min(0).max(3),
+    explanation: z.string().min(1),
+    sourceChunkId: z.string().uuid().nullable().optional(),
+  }),
+);
 export type LlmQuizQuestionItem = z.infer<typeof llmQuizQuestionItemSchema>;
 
 /** Structured quiz JSON output expected from the LLM. */
-export const llmQuizOutputSchema = z.object({
-  title: z.string().min(1),
-  questions: z.array(llmQuizQuestionItemSchema).min(1),
-});
+export const llmQuizOutputSchema = z.preprocess(
+  (val: unknown) => {
+    if (Array.isArray(val)) {
+      return {
+        title: 'Quiz',
+        questions: val,
+      };
+    }
+    return val;
+  },
+  z.object({
+    title: z.string().min(1),
+    questions: z.array(llmQuizQuestionItemSchema).min(1),
+  }),
+);
 export type LlmQuizOutput = z.infer<typeof llmQuizOutputSchema>;
 
 /** Quiz question representation returned over the wire. */
