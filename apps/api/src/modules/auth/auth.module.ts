@@ -10,10 +10,10 @@ import { TokenService } from './token.service.js';
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({}),
+    JwtModule.register({ global: true }),
   ],
   controllers: [AuthController, MeController],
   providers: [PasswordService, TokenService, AuthService, JwtStrategy],
-  exports: [PasswordService, TokenService, AuthService, JwtStrategy],
+  exports: [PasswordService, TokenService, AuthService, JwtStrategy, JwtModule],
 })
 export class AuthModule {}

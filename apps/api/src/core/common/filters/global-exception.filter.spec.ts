@@ -166,4 +166,23 @@ describe('GlobalExceptionFilter', () => {
     expect(payload.error).not.toHaveProperty('stack');
     expect(() => apiErrorSchema.parse(payload)).not.toThrow();
   });
+
+  it('formats HttpException with 429 status as RATE_LIMITED with user-friendly message', () => {
+    const throttlerError = new HttpException(
+      'ThrottlerException: Too Many Requests',
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+
+    filter.catch(throttlerError, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.TOO_MANY_REQUESTS);
+    const payload = mockJson.mock.calls[0][0];
+    expect(payload).toEqual({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many requests. Please slow down and try again later.',
+      },
+    });
+    expect(() => apiErrorSchema.parse(payload)).not.toThrow();
+  });
 });

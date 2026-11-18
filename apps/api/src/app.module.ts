@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, seconds } from '@nestjs/throttler';
 import { GlobalExceptionFilter } from './core/common/filters/global-exception.filter.js';
-import { parseEnv } from './core/config/env.js';
+import { AppThrottlerGuard } from './core/common/guards/app-throttler.guard.js';
+import { type Env, parseEnv } from './core/config/env.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
 import { QueueModule } from './core/queue/queue.module.js';
 import { StorageModule } from './core/storage/storage.module.js';
@@ -22,6 +24,24 @@ import { UsageModule } from './modules/usage/usage.module.js';
       envFilePath: ['.env', '../../.env'],
       validate: (config) => parseEnv(config),
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => {
+        const ttlSeconds = config.get('RATE_LIMIT_TTL_SECONDS', { infer: true });
+        const limit = config.get('RATE_LIMIT_MAX', { infer: true });
+        return {
+          errorMessage: 'Too many requests. Please slow down and try again later.',
+          throttlers: [
+            {
+              name: 'default',
+              ttl: seconds(ttlSeconds),
+              limit,
+            },
+          ],
+        };
+      },
+    }),
     PrismaModule,
     QueueModule,
     StorageModule,
@@ -35,6 +55,10 @@ import { UsageModule } from './modules/usage/usage.module.js';
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AppThrottlerGuard,
     },
   ],
 })

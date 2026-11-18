@@ -133,6 +133,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           details = resObj.details as Record<string, unknown>;
         }
       }
+
+      // Ensure standardized message for rate-limited requests
+      if (status === HttpStatus.TOO_MANY_REQUESTS) {
+        code = 'RATE_LIMITED';
+        if (!message || message.startsWith('ThrottlerException')) {
+          message = 'Too many requests. Please slow down and try again later.';
+        }
+      }
     } else if (isPrismaKnownError(exception)) {
       if (exception.code === 'P2002') {
         status = HttpStatus.CONFLICT;

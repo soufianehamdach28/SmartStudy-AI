@@ -17,6 +17,7 @@ import {
   registerRequestSchema,
   type UserProfile,
 } from '@smartstudy/shared';
+import { Throttle } from '@nestjs/throttler';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -29,6 +30,7 @@ import { AuthService } from './auth.service.js';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('register')
   async register(
     @Body(new ZodValidationPipe(registerRequestSchema)) dto: RegisterRequest,
@@ -36,6 +38,7 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
