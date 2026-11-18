@@ -12,6 +12,8 @@ import type { AppStackParamList } from '../../../app/navigation/types';
 import { EmptyView } from '../../../shared/components/EmptyView';
 import { ErrorView } from '../../../shared/components/ErrorView';
 import { LoadingView } from '../../../shared/components/LoadingView';
+import { OfflineView } from '../../../shared/components/OfflineView';
+import { useNetworkStatus } from '../../../shared/hooks/useNetworkStatus';
 import { parseDocumentErrorMessage } from '../api/documents.api';
 import { FlashcardViewer } from '../components/FlashcardViewer';
 import { useFavoritesStore } from '../../../shared/store/favorites.store';
@@ -28,6 +30,7 @@ export function FlashcardsScreen({ route, navigation }: Props) {
   const { data, isLoading, isError, error, refetch, isRefetching } =
     useFlashcards(documentId);
   const regenerateMutation = useRegenerateFlashcards(documentId);
+  const { isOffline } = useNetworkStatus();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -75,6 +78,11 @@ export function FlashcardsScreen({ route, navigation }: Props) {
   };
 
   const handleRegenerate = async () => {
+    if (isOffline) {
+      Alert.alert('Offline', 'Cannot regenerate flashcards while offline.');
+      return;
+    }
+
     try {
       await regenerateMutation.mutateAsync(10);
       handleRestart();
@@ -126,10 +134,18 @@ export function FlashcardsScreen({ route, navigation }: Props) {
       {isWorking && !data ? (
         <LoadingView message="Generating flashcards with AI..." />
       ) : isError ? (
-        <ErrorView
-          message={parseDocumentErrorMessage(error)}
-          onRetry={refetch}
-        />
+        isOffline ? (
+          <OfflineView
+            title="Flashcards Offline"
+            message="Cannot load flashcards while offline. Please check your connection."
+            onRetry={refetch}
+          />
+        ) : (
+          <ErrorView
+            message={parseDocumentErrorMessage(error)}
+            onRetry={refetch}
+          />
+        )
       ) : totalCards === 0 ? (
         filterFavoritesOnly ? (
           <EmptyView

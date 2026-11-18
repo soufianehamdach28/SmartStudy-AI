@@ -13,6 +13,8 @@ import { useNavigation } from '@react-navigation/native';
 import { EmptyView } from '../../../shared/components/EmptyView';
 import { ErrorView } from '../../../shared/components/ErrorView';
 import { LoadingView } from '../../../shared/components/LoadingView';
+import { OfflineView } from '../../../shared/components/OfflineView';
+import { useNetworkStatus } from '../../../shared/hooks/useNetworkStatus';
 import type { AppNavigationProp } from '../../../app/navigation/types';
 import { useAuthStore } from '../../auth/store/auth.store';
 import { parseDocumentErrorMessage } from '../api/documents.api';
@@ -30,6 +32,7 @@ export function DocumentsScreen() {
   const navigation = useNavigation<AppNavigationProp>();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
+  const { isOffline } = useNetworkStatus();
 
   const {
     data,
@@ -48,6 +51,14 @@ export function DocumentsScreen() {
   const [uploadPercent, setUploadPercent] = useState(0);
 
   const handlePickAndUpload = async () => {
+    if (isOffline) {
+      Alert.alert(
+        'Offline',
+        'Cannot upload documents while offline. Please reconnect to the internet.',
+      );
+      return;
+    }
+
     try {
       const file = await pickCourseDocument();
       if (!file) {
@@ -92,6 +103,15 @@ export function DocumentsScreen() {
     }
 
     if (isError) {
+      if (isOffline) {
+        return (
+          <OfflineView
+            title="Courses Offline"
+            message="Cannot load courses while offline. Please check your connection."
+            onRetry={() => refetch()}
+          />
+        );
+      }
       return (
         <ErrorView
           message={parseDocumentErrorMessage(error)}

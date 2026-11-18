@@ -15,6 +15,8 @@ import type { AppStackParamList } from '../../../app/navigation/types';
 import { EmptyView } from '../../../shared/components/EmptyView';
 import { ErrorView } from '../../../shared/components/ErrorView';
 import { LoadingView } from '../../../shared/components/LoadingView';
+import { OfflineView } from '../../../shared/components/OfflineView';
+import { useNetworkStatus } from '../../../shared/hooks/useNetworkStatus';
 import { parseChatErrorMessage } from '../api/chat.api';
 import {
   useConversation,
@@ -42,6 +44,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
   const flatListRef = useRef<FlatList<Message>>(null);
+  const { isOffline } = useNetworkStatus();
 
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
@@ -52,6 +55,11 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const createConversationMutation = useCreateConversation();
 
   const handleCreateNewChat = async () => {
+    if (isOffline) {
+      Alert.alert('Offline', 'Cannot create a new chat while offline.');
+      return;
+    }
+
     try {
       const newConv = await createConversationMutation.mutateAsync({
         documentId,
@@ -116,6 +124,15 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
 
     if (isError) {
+      if (isOffline) {
+        return (
+          <OfflineView
+            title="Chat Offline"
+            message="Cannot load conversation while offline. Please check your connection."
+            onRetry={() => refetch()}
+          />
+        );
+      }
       return (
         <ErrorView
           message={parseChatErrorMessage(error)}
@@ -224,7 +241,13 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           !conversationId ||
           isLoading ||
           createConversationMutation.isPending ||
-          sendMessageMutation.isPending
+          sendMessageMutation.isPending ||
+          isOffline
+        }
+        placeholder={
+          isOffline
+            ? 'You are offline — reconnect to send messages'
+            : 'Ask a question about this course...'
         }
       />
 

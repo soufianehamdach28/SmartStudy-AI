@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar, useColorScheme } from 'react-native';
 import { RootNavigator } from './navigation/RootNavigator';
 import { useAuthStore } from '../features/auth/store/auth.store';
+import { setupNetworkManager } from '../shared/hooks/useNetworkStatus';
+import { OfflineBanner } from '../shared/components/OfflineBanner';
 
 function App() {
   const isDarkMode = useColorScheme() === 'light';
@@ -24,12 +26,17 @@ function App() {
 
   useEffect(() => {
     loadSession();
+    const cleanupNetwork = setupNetworkManager();
+    return () => {
+      cleanupNetwork();
+    };
   }, [loadSession]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'}  />
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <OfflineBanner />
         <NavigationContainer>
           <RootNavigator />
         </NavigationContainer>

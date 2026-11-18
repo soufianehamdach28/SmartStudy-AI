@@ -3,6 +3,7 @@ import ReactTestRenderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
 import { EmptyView } from '../../../shared/components/EmptyView';
 import { LoadingView } from '../../../shared/components/LoadingView';
+import { OfflineView } from '../../../shared/components/OfflineView';
 import { MessageBubble } from '../components/MessageBubble';
 import { ChatScreen } from './ChatScreen';
 import {
@@ -13,6 +14,12 @@ import {
   useSendMessage,
 } from '../hooks/useChat';
 import { useFavoritesStore } from '../../../shared/store/favorites.store';
+
+const mockUseNetworkStatus = jest.fn();
+jest.mock('../../../shared/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: () => mockUseNetworkStatus(),
+  setupNetworkManager: jest.fn(() => jest.fn()),
+}));
 
 jest.mock('../hooks/useChat', () => ({
   useConversation: jest.fn(),
@@ -50,6 +57,12 @@ describe('ChatScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseNetworkStatus.mockReturnValue({
+      isConnected: true,
+      isInternetReachable: true,
+      isOffline: false,
+      connectionType: 'wifi',
+    });
     useFavoritesStore.getState().clearFavorites();
     (useCreateConversation as jest.Mock).mockReturnValue(
       mockCreateConversation,
@@ -334,5 +347,73 @@ describe('ChatScreen', () => {
       testID: 'conversation-history-modal',
     });
     expect(historyModal.props.visible).toBe(true);
+  });
+
+  it('disables ChatInputBar with offline placeholder when offline', () => {
+    mockUseNetworkStatus.mockReturnValue({
+      isConnected: false,
+      isInternetReachable: false,
+      isOffline: true,
+      connectionType: 'none',
+    });
+
+    (useConversation as jest.Mock).mockReturnValue({
+      data: {
+        id: 'conv-123',
+        messages: [],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <ChatScreen
+          navigation={mockNavigation as any}
+          route={mockRoute as any}
+        />,
+      );
+    });
+
+    const root = renderer.root;
+    const input = root.findByProps({ testID: 'chat-input' });
+    expect(input.props.editable).toBe(false);
+    expect(input.props.placeholder).toBe(
+      'You are offline — reconnect to send messages',
+    );
+  });
+
+  it('renders OfflineView when conversation fetch fails and device is offline', () => {
+    mockUseNetworkStatus.mockReturnValue({
+      isConnected: false,
+      isInternetReachable: false,
+      isOffline: true,
+      connectionType: 'none',
+    });
+
+    (useConversation as jest.Mock).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('Network offline'),
+      refetch: jest.fn(),
+    });
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = ReactTestRenderer.create(
+        <ChatScreen
+          navigation={mockNavigation as any}
+          route={mockRoute as any}
+        />,
+      );
+    });
+
+    const root = renderer.root;
+    const offlineView = root.findByType(OfflineView);
+    expect(offlineView).toBeDefined();
+    expect(offlineView.props.title).toBe('Chat Offline');
   });
 });

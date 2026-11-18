@@ -87,6 +87,11 @@ jest.mock('@react-native-documents/picker', () => {
   };
 });
 
+// Mock @react-native-community/netinfo
+jest.mock('@react-native-community/netinfo', () =>
+  require('@react-native-community/netinfo/jest/netinfo-mock.js'),
+);
+
 // Disable looped animations in tests
 const { AccessibilityInfo } = require('react-native');
 if (AccessibilityInfo) {

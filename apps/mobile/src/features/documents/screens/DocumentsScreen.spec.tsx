@@ -5,6 +5,7 @@ import { DocumentsScreen } from './DocumentsScreen';
 import { LoadingView } from '../../../shared/components/LoadingView';
 import { EmptyView } from '../../../shared/components/EmptyView';
 import { ErrorView } from '../../../shared/components/ErrorView';
+import { OfflineView } from '../../../shared/components/OfflineView';
 import { DocumentCard } from '../components/DocumentCard';
 import * as useDocumentsModule from '../hooks/useDocuments';
 import * as documentPickerModule from '../lib/document-picker';
@@ -16,6 +17,12 @@ jest.mock('@react-navigation/native', () => ({
     navigate: mockNavigate,
     goBack: jest.fn(),
   }),
+}));
+
+const mockUseNetworkStatus = jest.fn();
+jest.mock('../../../shared/hooks/useNetworkStatus', () => ({
+  useNetworkStatus: () => mockUseNetworkStatus(),
+  setupNetworkManager: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../hooks/useDocuments');
@@ -43,6 +50,12 @@ describe('DocumentsScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseNetworkStatus.mockReturnValue({
+      isConnected: true,
+      isInternetReachable: true,
+      isOffline: false,
+      connectionType: 'wifi',
+    });
     act(() => {
       useAuthStore.setState({
         user: {
@@ -212,6 +225,70 @@ describe('DocumentsScreen', () => {
       await importButton.props.onPress();
     });
 
+    expect(mockMutateAsyncUpload).not.toHaveBeenCalled();
+  });
+
+  it('renders OfflineView when an error occurs and device is offline', () => {
+    mockUseNetworkStatus.mockReturnValue({
+      isConnected: false,
+      isInternetReachable: false,
+      isOffline: true,
+      connectionType: 'none',
+    });
+
+    (useDocumentsModule.useDocuments as jest.Mock).mockReturnValue({
+      isLoading: false,
+      isError: true,
+      error: new Error('Network failed'),
+      data: undefined,
+      refetch: mockRefetch,
+      isRefetching: false,
+    });
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = ReactTestRenderer.create(<DocumentsScreen />);
+    });
+
+    const offlineView = renderer.root.findByType(OfflineView);
+    expect(offlineView).toBeDefined();
+    expect(offlineView.props.title).toBe('Courses Offline');
+  });
+
+  it('blocks document upload and shows alert when offline', async () => {
+    mockUseNetworkStatus.mockReturnValue({
+      isConnected: false,
+      isInternetReachable: false,
+      isOffline: true,
+      connectionType: 'none',
+    });
+
+    (useDocumentsModule.useDocuments as jest.Mock).mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: { items: [], total: 0 },
+      refetch: mockRefetch,
+      isRefetching: false,
+    });
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = ReactTestRenderer.create(<DocumentsScreen />);
+    });
+
+    const importButton = renderer.root.findByProps({
+      testID: 'header-import-button',
+    });
+
+    await act(async () => {
+      await importButton.props.onPress();
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Offline',
+      expect.stringContaining('Cannot upload documents while offline'),
+    );
+    expect(documentPickerModule.pickCourseDocument).not.toHaveBeenCalled();
     expect(mockMutateAsyncUpload).not.toHaveBeenCalled();
   });
 });

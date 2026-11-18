@@ -15,6 +15,8 @@ import { EmptyView } from '../../../shared/components/EmptyView';
 import { ErrorView } from '../../../shared/components/ErrorView';
 import { LoadingView } from '../../../shared/components/LoadingView';
 import { MarkdownView } from '../../../shared/components/MarkdownView';
+import { OfflineView } from '../../../shared/components/OfflineView';
+import { useNetworkStatus } from '../../../shared/hooks/useNetworkStatus';
 import { parseDocumentErrorMessage } from '../api/documents.api';
 import {
   useDocumentSummary,
@@ -29,6 +31,7 @@ export function DocumentSummaryScreen({ route, navigation }: Props) {
   const { data, isLoading, isError, error, refetch, isRefetching } =
     useDocumentSummary(documentId);
   const regenerateMutation = useRegenerateDocumentSummary(documentId);
+  const { isOffline } = useNetworkStatus();
 
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +57,11 @@ export function DocumentSummaryScreen({ route, navigation }: Props) {
   };
 
   const handleRegenerate = async () => {
+    if (isOffline) {
+      Alert.alert('Offline', 'Cannot regenerate summary while offline.');
+      return;
+    }
+
     try {
       await regenerateMutation.mutateAsync();
     } catch (err) {
@@ -110,10 +118,18 @@ export function DocumentSummaryScreen({ route, navigation }: Props) {
       {isWorking && !data ? (
         <LoadingView message="Generating summary with AI..." />
       ) : isError ? (
-        <ErrorView
-          message={parseDocumentErrorMessage(error)}
-          onRetry={refetch}
-        />
+        isOffline ? (
+          <OfflineView
+            title="Summary Offline"
+            message="Cannot load summary while offline. Please check your connection."
+            onRetry={refetch}
+          />
+        ) : (
+          <ErrorView
+            message={parseDocumentErrorMessage(error)}
+            onRetry={refetch}
+          />
+        )
       ) : !data?.summary ? (
         <EmptyView
           title="No summary available"

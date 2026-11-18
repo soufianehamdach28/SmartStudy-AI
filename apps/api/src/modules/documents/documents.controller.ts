@@ -90,7 +90,8 @@ export class DocumentsController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Validation failed (unsupported file type, file too large, missing).',
+    description:
+      'Validation failed (unsupported file type, file too large, missing).',
   })
   @ApiResponse({ status: 401, description: 'Authentication required.' })
   async upload(
@@ -215,10 +216,18 @@ export class DocumentsController {
   async generateFlashcards(
     @CurrentUser() user: CurrentUserPayload,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body(new ZodValidationPipe(generateFlashcardsRequestSchema.optional().default({ count: 10 })))
+    @Body(
+      new ZodValidationPipe(
+        generateFlashcardsRequestSchema.optional().default({ count: 10 }),
+      ),
+    )
     body: GenerateFlashcardsRequest,
   ): Promise<FlashcardsResponse> {
-    return this.flashcardsService.generateFlashcards(user.userId, id, body.count);
+    return this.flashcardsService.generateFlashcards(
+      user.userId,
+      id,
+      body.count,
+    );
   }
 
   /**
@@ -261,7 +270,11 @@ export class DocumentsController {
   async generateQuiz(
     @CurrentUser() user: CurrentUserPayload,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body(new ZodValidationPipe(generateQuizRequestSchema.optional().default({ questionCount: 5 })))
+    @Body(
+      new ZodValidationPipe(
+        generateQuizRequestSchema.optional().default({ questionCount: 5 }),
+      ),
+    )
     body: GenerateQuizRequest,
   ): Promise<QuizResponse> {
     return this.quizService.generateQuiz(user.userId, id, body);
@@ -288,4 +301,3 @@ export class DocumentsController {
     return this.quizService.getDocumentQuizzes(user.userId, id);
   }
 }
-
